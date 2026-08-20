@@ -5,6 +5,7 @@
 .env
 /storage/app.env
 /storage/installed.lock
+/storage/install-token.txt
 
 # User uploads
 /storage/uploads/*
