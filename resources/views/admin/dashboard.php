@@ -74,7 +74,13 @@ $recentActivity = $data['recentActivity'];
                 <ul class="bar-list">
                     <?php foreach ($topPaths as $p): ?>
                         <li>
-                            <span class="bar-list-label"><?= e($p['path']) ?></span>
+                            <span class="bar-list-label">
+                                <?php if ($p['href'] !== null): ?>
+                                    <a href="<?= e($p['href']) ?>" target="_blank" rel="noopener"><?= e($p['label']) ?></a>
+                                <?php else: ?>
+                                    <?= e($p['label']) ?>
+                                <?php endif; ?>
+                            </span>
                             <span class="bar-list-track"><span class="bar-list-fill" style="--pct: <?= (int) round($p['views'] / $maxPathViews * 100) ?>%"></span></span>
                             <span class="bar-list-value"><?= (int) $p['views'] ?></span>
                         </li>

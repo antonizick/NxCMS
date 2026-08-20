@@ -50,6 +50,11 @@ return (static function (): array {
             // Falls back to the requesting host so a fresh install still builds
             // correct absolute URLs (sitemap, canonical links) before APP_URL is set.
             'url' => $env['APP_URL'] ?? ('https://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')),
+            // Only needed when the admin panel is reverse-proxied on a separate
+            // origin from the public site (e.g. a dedicated subdomain). Empty
+            // by default, meaning "same origin, at /admin" — the public page's
+            // admin-login shortcut then stays a plain relative link.
+            'admin_url' => rtrim($env['ADMIN_URL'] ?? '', '/'),
         ],
         'db' => [
             'host' => $env['DB_HOST'] ?? '127.0.0.1',
