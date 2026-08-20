@@ -22,7 +22,7 @@ UPDATE site_settings SET
     display_name        = 'Nora Xie',
     copyright_year      = '2026',
     copyright_text      = 'Nora Xie',
-    footer_text         = 'Built with portal.lift',
+    footer_text         = 'Built with NxCMS',
     copy_link_text      = 'Copy link',
     copy_link_url       = '',
     theme_default       = 'dark',

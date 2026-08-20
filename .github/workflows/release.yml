@@ -31,5 +31,5 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/portal-lift-${{ steps.version.outputs.version }}.zip
+          files: dist/nxcms-${{ steps.version.outputs.version }}.zip
           generate_release_notes: true

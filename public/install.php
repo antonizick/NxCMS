@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * portal.lift — web installer.
+ * NxCMS — web installer.
  *
  * Standalone by design. This file runs before .env exists, before the database
  * exists, and before the front controller can boot, so it must not depend on
@@ -180,7 +180,7 @@ function setup_token(): ?string
     // Mirrored to the error log, which is where a container operator can
     // actually reach it (`docker compose logs`). On shared hosting PHP runs as
     // the account user, so the file itself is readable and this is redundant.
-    error_log('portal.lift setup token: ' . $token);
+    error_log('NxCMS setup token: ' . $token);
 
     return $token;
 }
@@ -574,7 +574,7 @@ function run_install(array $db, array $site, string $password): array
         $appKey = $existing['APP_KEY'] ?? base64_encode(random_bytes(32));
 
         $env = <<<ENV
-        # Written by the portal.lift installer. Keep this file private.
+        # Written by the NxCMS installer. Keep this file private.
         APP_ENV=production
         APP_DEBUG=false
         APP_URL={$site['url']}
@@ -853,7 +853,7 @@ function render(string $title, string $body, array $vars = []): never
     echo '<!doctype html><html lang="en"><head><meta charset="utf-8">',
          '<meta name="viewport" content="width=device-width,initial-scale=1">',
          '<meta name="robots" content="noindex">',
-         '<title>', h($title), ' — portal.lift setup</title><style>', styles(), '</style></head>',
+         '<title>', h($title), ' — NxCMS setup</title><style>', styles(), '</style></head>',
          '<body><main><h1>', h($title), '</h1>', $body, '</main></body></html>';
     exit;
 }
