@@ -178,20 +178,40 @@ body::before {
     50%      { transform: translate(-5vw, 7vh) scale(.92); }
 }
 
-/* Dark theme only: a faint HUD scanline sweeping down the page. */
+/* Dark theme: a HUD scanline sweeping down the page — a hard-edged vertical
+   band, in character with the dark theme's tech/HUD feel. Bumped from an
+   easy-to-miss 5% peak to 14%; still a glance, not a strobe.
+
+   Light theme: same element, restyled entirely — a soft diagonal sheen
+   drifting corner to corner, like light passing over glass. Different shape,
+   different axis, different pace, so it reads as its own thing rather than
+   a dimmed copy of the dark version, at matching restraint (10% peak, a
+   slow 26s ease breathing loop vs. the scanline's steady 11s linear pass). */
 .ambient-scan {
     position: absolute;
     left: 0; right: 0;
-    height: 140px;
-    background: linear-gradient(180deg, transparent, rgba(34, 211, 238, .05), transparent);
-    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 5%, transparent), transparent);
+    height: 160px;
+    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 14%, transparent), transparent);
     animation: ambient-scan 11s linear infinite;
 }
-[data-theme="light"] .ambient-scan { display: none; }
+
+[data-theme="light"] .ambient-scan {
+    left: -30%;
+    right: -30%;
+    width: 160%;
+    height: 320px;
+    background: linear-gradient(115deg, transparent, color-mix(in srgb, var(--accent) 10%, transparent), transparent);
+    animation: ambient-sheen 26s ease-in-out infinite;
+}
 
 @keyframes ambient-scan {
-    0%   { transform: translateY(-140px); }
+    0%   { transform: translateY(-160px); }
     100% { transform: translateY(100vh); }
+}
+
+@keyframes ambient-sheen {
+    0%, 100% { transform: translate(-15%, -45%) rotate(10deg); }
+    50%      { transform: translate(15%, 65%) rotate(10deg); }
 }
 
 img { max-width: 100%; display: block; }
