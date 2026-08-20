@@ -1,5 +1,17 @@
 # Upgrading
 
+## 0.2.1 → 0.2.2
+
+Code only — no migration. Adds an optional `ADMIN_URL` env var (alongside
+the existing `APP_URL`) for installs that reverse-proxy the admin panel on
+a separate origin from the public site — e.g. `portal.example.com` while
+the public site is `example.com`. Leave it unset and nothing changes: the
+Toolbox double-click shortcut stays a same-origin `/admin/login` link, same
+as before.
+
+Also swaps the raw `/article/{id}` paths in the dashboard's Top pages panel
+for the post's title, linked out to the live article.
+
 ## 0.2.0 → 0.2.1
 
 Documentation only — adds `docs/CAROUSELS.md` and a troubleshooting entry for
