@@ -8,11 +8,12 @@
     /* ── Unobtrusive form handlers ──────────────────────────────────────
        No inline onchange=/onsubmit= anywhere in the views — a strict CSP
        (script-src with no 'unsafe-inline') blocks those attributes outright,
-       so this delegates from markers instead: .archive-select auto-submits
-       its form on change, and any form with data-confirm asks before it
-       submits. Delegated on document so it also covers admin CRUD tables. */
+       so this delegates from markers instead: .archive-select and
+       .js-auto-submit auto-submit their form on change, and any form with
+       data-confirm asks before it submits. Delegated on document so it also
+       covers admin CRUD tables. */
     document.addEventListener('change', function (e) {
-        if (e.target.matches && e.target.matches('.archive-select')) {
+        if (e.target.matches && (e.target.matches('.archive-select') || e.target.matches('.js-auto-submit'))) {
             e.target.form.submit();
         }
     });
@@ -329,6 +330,150 @@
         });
     }
 
+    /* ── Home-tile carousels (tiles 1 and 7) ────────────────────────────
+       MSN/Netflix-style rotating slides with a pagination dot row. Slide 0
+       is the tile's own content (the profile, the map) and never leaves the
+       rotation; the rest are posts flagged into it from the CMS.
+
+       Auto-advance stops on hover and on keyboard focus anywhere inside the
+       tile, so a slide can't change out from under someone mid-sentence or
+       while they are tabbing toward its link. Under prefers-reduced-motion
+       nothing advances by itself at all — the dots still work, which keeps
+       every slide reachable without any motion happening unasked. */
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var SLIDE_MS = 7000;
+
+    function initCarousel(root, phase) {
+        var track = root.querySelector('.carousel-track');
+        var slides = root.querySelectorAll('.carousel-slide');
+        var dots = root.querySelectorAll('.carousel-dot');
+        if (!track || slides.length < 2) {
+            return null;
+        }
+
+        var index = 0;
+        var timer = null;
+        var paused = false;
+        var firstDelay = phase;
+
+        function show(next) {
+            index = (next + slides.length) % slides.length;
+            track.style.transform = 'translateX(' + (-index * 100) + '%)';
+
+            for (var i = 0; i < slides.length; i++) {
+                var current = i === index;
+                slides[i].classList.toggle('is-active', current);
+                // Off-screen slides leave the tab order and the accessibility
+                // tree: otherwise Tab lands on links nobody can see and a
+                // screen reader reads all six slides as one run of text.
+                slides[i].setAttribute('aria-hidden', current ? 'false' : 'true');
+                slides[i].inert = !current;
+            }
+
+            for (var d = 0; d < dots.length; d++) {
+                dots[d].classList.toggle('is-active', d === index);
+                if (d === index) {
+                    dots[d].setAttribute('aria-current', 'true');
+                } else {
+                    dots[d].removeAttribute('aria-current');
+                }
+            }
+        }
+
+        // A self-rescheduling timeout rather than setInterval: it lets the
+        // first tick carry a phase offset (see below), and a backgrounded tab
+        // can't queue up a burst of missed intervals to replay on return.
+        function schedule(delay) {
+            timer = setTimeout(function () {
+                show(index + 1);
+                schedule(SLIDE_MS);
+            }, delay);
+        }
+
+        function start() {
+            if (reduceMotion || paused || timer) {
+                return;
+            }
+            schedule(firstDelay);
+            firstDelay = SLIDE_MS;
+        }
+
+        function stop() {
+            clearTimeout(timer);
+            timer = null;
+        }
+
+        root.addEventListener('mouseenter', function () { paused = true; stop(); });
+        root.addEventListener('mouseleave', function () { paused = false; start(); });
+        root.addEventListener('focusin', function () { paused = true; stop(); });
+        root.addEventListener('focusout', function (e) {
+            // relatedTarget is where focus is heading; document.activeElement
+            // is still the old element at this point in the event.
+            if (!root.contains(e.relatedTarget)) {
+                paused = false;
+                start();
+            }
+        });
+
+        Array.prototype.forEach.call(dots, function (dot, target) {
+            dot.addEventListener('click', function () {
+                show(target);
+                // Restart the dwell so a deliberate pick gets a full look
+                // instead of whatever was left of the previous slide's turn.
+                stop();
+                start();
+            });
+        });
+
+        show(0);
+        start();
+    }
+
+    /* Stagger the carousels so tiles 1 and 7 never move in step. Offsetting
+       the *phase* rather than the cadence is deliberate: two different
+       intervals drift apart but re-synchronise at their least common
+       multiple — 7s and 9s would coincide every 63 seconds, which is exactly
+       when a viewer notices. Same cadence, evenly spread starts, and they
+       are never in step at all. */
+    var carousels = document.querySelectorAll('[data-carousel]');
+
+    Array.prototype.forEach.call(carousels, function (tile, i) {
+        initCarousel(tile, (SLIDE_MS / carousels.length) * i);
+    });
+
+    /* ── Tile 1 excerpt clamp ────────────────────────────────────────────
+       Tile 1's article text flex-fills its slide and fades out where it
+       overflows (see .slide-excerpt in app.css), so the slide is as full as
+       the bio it alternates with at every width — something no fixed
+       character budget can do, since the count that fills at 1440px
+       overshoots at 1200px. The consequence is that only the browser knows
+       how much actually fit, so "More" has to be driven from real overflow
+       rather than a server-side character count, and re-checked whenever the
+       column width changes. */
+    var clamped = document.querySelectorAll('.tile--profile .slide-excerpt');
+
+    function syncClamps() {
+        Array.prototype.forEach.call(clamped, function (excerpt) {
+            var isClipped = excerpt.scrollHeight > excerpt.clientHeight + 1;
+            excerpt.classList.toggle('is-clipped', isClipped);
+
+            var more = excerpt.parentNode.querySelector('.slide-more');
+            if (more) {
+                more.hidden = !isClipped;
+            }
+        });
+    }
+
+    if (clamped.length) {
+        syncClamps();
+
+        var clampTimer = null;
+        window.addEventListener('resize', function () {
+            clearTimeout(clampTimer);
+            clampTimer = setTimeout(syncClamps, 150);
+        });
+    }
+
     /* ── Tile 1 avatar oscillation ───────────────────────────────────────
        Runs whenever 2+ of the four possible profile images (headshot, logo,
        photo3, photo4) exist — the .avatar--swaps class is added server-side
@@ -339,17 +484,44 @@
     var avatar = document.querySelector('.avatar--swaps');
     var avatarEffects = ['fx-blur', 'fx-zoom', 'fx-wipe'];
 
-    if (avatar && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (avatar) {
         var frames = avatar.querySelectorAll('.avatar-img');
         if (frames.length > 1) {
-            var index = 0;
-            setInterval(function () {
+            var frame = 0;
+            var avatarTimer = null;
+
+            var advanceAvatar = function () {
                 avatar.classList.remove('fx-blur', 'fx-zoom', 'fx-wipe');
                 avatar.classList.add(avatarEffects[Math.floor(Math.random() * avatarEffects.length)]);
-                frames[index].classList.remove('is-active');
-                index = (index + 1) % frames.length;
-                frames[index].classList.add('is-active');
-            }, 20000);
+                frames[frame].classList.remove('is-active');
+                frame = (frame + 1) % frames.length;
+                frames[frame].classList.add('is-active');
+            };
+
+            var startAvatarTimer = function () {
+                if (reduceMotion || avatarTimer) {
+                    return;
+                }
+                // Deliberately independent of which slide the carousel is
+                // showing: the photo keeps its own 20s cadence throughout.
+                // Holding it still on article slides, so that only one thing
+                // moves at a time, was tried and judged not worth coupling the
+                // two timers together. Revisit if it ever reads as busy.
+                avatarTimer = setInterval(advanceAvatar, 20000);
+            };
+
+            // Click (or Enter/Space — it is a real <button> whenever there is
+            // more than one photo) forces the next frame and restarts the
+            // dwell, so a deliberate tap isn't followed a second later by an
+            // automatic swap that undoes it.
+            avatar.addEventListener('click', function () {
+                advanceAvatar();
+                clearInterval(avatarTimer);
+                avatarTimer = null;
+                startAvatarTimer();
+            });
+
+            startAvatarTimer();
         }
     }
 

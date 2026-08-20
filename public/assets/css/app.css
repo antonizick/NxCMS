@@ -345,15 +345,197 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* Whole-card click target without nesting interactive elements. */
 .stretched::after { content: ""; position: absolute; inset: 0; }
 
+/* ── Tile carousels (tiles 1 and 7) ───────────────────────────────────
+   Slides live in one flex strip translated by whole multiples of 100%, so
+   the transition is a real horizontal slide rather than a crossfade — the
+   dot row promises a position in a strip, and the motion has to agree with
+   it. The track is as tall as its tallest slide and never animates height:
+   a tile that grew and shrank as it rotated would shove the whole grid
+   around every few seconds.
+
+   Stacking inside a tile, lowest first: track (1) < persistent avatar (3)
+   < dots (4). Article slides use .stretched, whose ::after covers the whole
+   slide — without those z-indexes it would swallow clicks meant for the
+   avatar and the dots, which sit visually on top of it. */
+.carousel-viewport {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    overflow: hidden;
+}
+.carousel-track {
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+    transition: transform .55s cubic-bezier(.4, 0, .2, 1);
+}
+.carousel-slide {
+    position: relative;
+    z-index: 0;
+    flex: 0 0 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* The post's own image as a backdrop. Deliberately NOT the .has-artbg
+   treatment tiles 5/6/8 use: that one desaturates the art and lays an
+   accent-coloured blend over it, which works because those tiles have a
+   strong background colour of their own for it to tint. These slides sit
+   on the plain card, where the same blend stops reading as a tint and
+   becomes a flat field of colour — worst of all in light theme, over
+   white. So here the art keeps its own colours, drops to a whisper, and
+   the colour layer is skipped entirely. Muted enough to keep the text
+   comfortable is the whole requirement. */
+.carousel-slide.has-artbg::before {
+    filter: saturate(.9) brightness(.9);
+    opacity: .18;
+}
+.carousel-slide.has-artbg::after { display: none; }
+[data-theme="light"] .carousel-slide.has-artbg::before {
+    filter: saturate(.9) brightness(1.04);
+    opacity: .12;
+}
+
+/* .kicker--tag is built for the saturated cards on tiles 5/6/8, where a
+   translucent white pill with white text sits over a strong background
+   colour. A carousel slide's backdrop is the plain card, so in light theme
+   that same rule paints white on white — the label needs inverting here. */
+[data-theme="light"] .carousel-slide .kicker--tag {
+    background: rgba(0, 0, 0, .06);
+    color: var(--text);
+}
+
+/* Article slides — same vertical rhythm as the compact cards on tiles 5/6/8. */
+.carousel-slide--post .slide-body { gap: 9px; }
+.carousel-slide--pad { padding: var(--pad); gap: 9px; }
+
+.slide-title { font-size: 17px; font-weight: 700; line-height: 1.3; letter-spacing: -.01em; }
+.slide-excerpt { font-size: 13.5px; line-height: 1.55; color: var(--text-dim); }
+
+/* Tile 1 is the 2x2 tile on the grid, and article text set at the compact
+   card size left it under-filled next to the bio it alternates with.
+   Matching .bio exactly means the same volume of text occupies the tile the
+   way the profile does, without padding the excerpt out with more words.
+   The title scales with it — at 17px over 15.5px body it stops reading as a
+   title, bold or not. The map tile keeps the compact size: it is the same
+   box as news2 and should match its neighbour, not tile 1. */
+.tile--profile .slide-excerpt { font-size: 15.5px; line-height: 1.62; }
+[data-theme="light"] .tile--profile .slide-excerpt { color: #262d30; }
+.tile--profile .slide-title { font-size: 20px; }
+.tile--profile .slide-more { font-size: 14.5px; }
+
+/* The excerpt grows into whatever the slide has left and fades out where
+   it overflows, so an article slide is as full as the bio it alternates
+   with at every width. A fixed character budget cannot do that: measured
+   across widths, the count that fills at 1440px overshoots at 1200px,
+   which makes the article slide the tallest, grows the tile, and starves
+   the bio instead.
+
+   Scoped two ways on purpose. To --post, so the bio slide keeps its
+   natural height and goes on setting the tile's — if the bio could shrink
+   too, nothing would establish the height and the tile would collapse onto
+   whatever the grid row gave it. And to tile 1, because the map tile
+   already fills correctly at its own size and doesn't need this.
+
+   min-height:0 on the intermediate flex items is what actually allows the
+   shrink; without it a flex item in a column refuses to go below its
+   content and the overflow never happens.
+
+   And the article slides are taken out of flow entirely. min-height:0
+   permits a shrink but nothing was demanding one: the track still sized
+   itself to its tallest child, so a deliberately over-long excerpt grew
+   the tile from 606px to 953px and starved the bio instead — the same
+   failure as an oversized character budget, arrived at from the other
+   direction. Out of flow, only the bio slide contributes a height, the
+   tile stays exactly as tall as it was before this feature, and article
+   slides are pinned to that box and clip. Each is offset by its own index
+   so the track's translateX still carries them past as one strip. */
+.tile--profile .carousel-track { position: relative; }
+.tile--profile .carousel-slide--post {
+    position: absolute;
+    top: 0;
+    left: calc(var(--i) * 100%);
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+.tile--profile .carousel-slide--post .slide-body { flex: 1; min-height: 0; }
+.tile--profile .slide-excerpt { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+
+/* Applied by app.js only when the text really is cut, so a short article
+   that fits isn't given a phantom fade over its last line. */
+.tile--profile .slide-excerpt.is-clipped {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.6em), transparent);
+            mask-image: linear-gradient(to bottom, #000 calc(100% - 2.6em), transparent);
+}
+.slide-meta { margin-top: auto; font-size: 12.5px; color: var(--text-mute); }
+.slide-more {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13.5px; font-weight: 500;
+    color: var(--accent);
+}
+.slide-more .icon { transition: transform .2s; }
+.carousel-slide:hover .slide-more .icon { transform: translateX(3px); }
+
+/* Small copy of the post's own image, top-right — the treatment tile 4
+   already uses for the lead news story. */
+.slide-thumb { display: block; width: 74px; flex: none; }
+.slide-thumb img { width: 100%; height: auto; max-height: 74px; object-fit: contain; border-radius: var(--radius-sm); }
+[data-theme="dark"] .slide-thumb img { mix-blend-mode: screen; }
+
+.carousel-dots {
+    position: relative;
+    z-index: 4;
+    display: flex; justify-content: center; align-items: center; gap: 8px;
+    margin-top: 16px;
+}
+.carousel-dot {
+    width: 7px; height: 7px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--text-mute);
+    opacity: .45;
+    cursor: pointer;
+    transition: opacity .2s, width .25s, background-color .2s;
+}
+.carousel-dot:hover { opacity: .85; }
+.carousel-dot.is-active { width: 20px; border-radius: 999px; background: var(--accent); opacity: 1; }
+.carousel-dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .carousel-track { transition: none; }
+}
+
 /* ── Tile 1: Profile ─────────────────────────────────────────────────── */
 .tile--profile { display: flex; flex-direction: column; }
 
-.profile-top {
+/* The avatar is a sibling of the track, not a child of a slide, so the
+   carousel never slides it away — it is pinned over the track's top-left
+   corner and every slide's head reserves exactly its box (122px + the old
+   16px flex gap) so nothing ever runs underneath it. */
+.tile--profile > .avatar {
+    position: absolute;
+    top: var(--pad); left: var(--pad);
+    z-index: 3;
+}
+button.avatar {
+    padding: 0;
+    appearance: none; -webkit-appearance: none;
+    cursor: pointer;
+}
+button.avatar:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+.tile--profile .slide-head {
+    min-height: 122px;
+    padding-left: 138px;
     display: flex;
     align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
+    justify-content: flex-end;
+    gap: 12px;
 }
+.tile--profile .slide-body { display: flex; flex-direction: column; }
 
 .avatar {
     position: relative;
@@ -526,29 +708,29 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* Optional article-art backdrop: desaturated + tinted to the tile's theme
    color, kept behind real content via z-index:-1 (no effect on the
    whole-tile .stretched click target, which stays z-index:auto). */
-.tile.has-artbg { z-index: 0; }
-.tile.has-artbg::before,
-.tile.has-artbg::after {
+.has-artbg { z-index: 0; }
+.has-artbg::before,
+.has-artbg::after {
     content: "";
     position: absolute;
     inset: 0;
     z-index: -1;
     pointer-events: none;
 }
-.tile.has-artbg::before {
+.has-artbg::before {
     background-image: var(--art-img);
     background-size: cover;
     background-position: center;
     filter: grayscale(1) contrast(1.05) brightness(.85);
     opacity: .22;
 }
-.tile.has-artbg::after {
+.has-artbg::after {
     background: var(--accent);
     mix-blend-mode: color;
     opacity: .5;
 }
 .tile--news2.has-artbg::after { background: var(--orange); }
-[data-theme="light"] .tile.has-artbg::before {
+[data-theme="light"] .has-artbg::before {
     filter: grayscale(1) contrast(1.05) brightness(1.05);
     opacity: .14;
 }
@@ -610,7 +792,28 @@ button { font: inherit; color: inherit; cursor: pointer; }
     background: var(--t7-bg);
     border-color: var(--t7-border);
     min-height: 200px;
+    /* Flex column so .carousel-viewport's flex:1 has a flex parent to fill.
+       Without it the viewport collapses to the map slide's min-height while
+       the tile itself stretches to the taller news2 tile beside it, and the
+       map ends up occupying only the top of its own tile. (.sr-only heading
+       is absolutely positioned, so it takes no space in this column.) */
+    display: flex;
+    flex-direction: column;
 }
+
+/* When the location tile is rotating, its dots float over the map slide
+   rather than taking a row of their own — the map is full-bleed and has no
+   padding to give one. The pill and clock lift above the dot row so the
+   three never collide on a narrow tile. */
+.tile--recon .carousel-dots {
+    position: absolute;
+    left: 0; right: 0; bottom: 13px;
+    margin-top: 0;
+}
+.tile--recon.carousel .recon-pill,
+.tile--recon.carousel .recon-time { bottom: 40px; }
+
+.carousel-slide--map { min-height: 200px; padding: 0; }
 
 .map { position: absolute; inset: 0; overflow: hidden; }
 .map-mosaic {
@@ -683,6 +886,34 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .btn .icon { font-size: 16px; transition: transform .2s; }
 .btn:hover .icon { transform: translateX(3px); }
 
+/* ── Admin: carousel curation on the post list ───────────────────────── */
+
+/* How many posts each tile's rotation can actually show, against how many
+   are flagged. Flagging past the cap is silently a no-op, so the over state
+   is called out rather than left to be discovered on the home page. */
+.rotation-slots {
+    display: flex; flex-wrap: wrap; gap: 8px 18px;
+    margin: -6px 0 18px;
+    font-size: 12.5px;
+    color: var(--text-mute);
+}
+.rotation-slot strong { color: var(--text-dim); font-weight: 600; }
+.rotation-slot.is-over strong { color: var(--orange); }
+
+.rotation-cell { white-space: nowrap; }
+.rotation-cell form { display: inline; }
+
+.rotation-toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-right: 12px;
+    font-size: 12.5px;
+    color: var(--text-mute);
+    cursor: pointer;
+}
+.rotation-toggle input { cursor: pointer; accent-color: var(--accent); }
+.rotation-toggle:hover { color: var(--text-dim); }
+.rotation-toggle input:checked + span { color: var(--accent); font-weight: 600; }
+
 /* ── Toast ───────────────────────────────────────────────────────────── */
 .toast {
     position: fixed;
@@ -717,7 +948,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (max-width: 560px) {
     :root { --pad: 18px; }
     .shell { padding-top: 18px; }
-    .profile-top { flex-direction: column; align-items: flex-start; gap: 14px; }
+    /* The slide's own backdrop already shows the image here, and the column
+       is too narrow to spend a row on a second copy of it. */
+    .slide-thumb { display: none; }
+
+    /* Too narrow to sit beside the avatar — slide content starts below it
+       instead, matching the stacked layout this tile has always had here. */
+    .tile--profile .slide-head {
+        min-height: 0;
+        padding-left: 0;
+        padding-top: 136px;
+        justify-content: flex-start;
+    }
     .project { grid-template-columns: minmax(0, 1fr) auto; }
     .project-desc { grid-column: 1 / -1; grid-row: 2; }
     .news1-title { font-size: 19px; }
@@ -1055,6 +1297,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .focus-item-cat--youtube { color: #ff0000; }
 [data-theme="dark"] .focus-item-cat--youtube { color: var(--accent); }
 .focus-item-cat--project_work { color: var(--accent-2); }
+.focus-item-cat--misc { color: var(--text-dim); }
 .focus-item-title { display: block; font-size: 13.5px; line-height: 1.4; color: var(--text-dim); }
 .focus-item.is-active .focus-item-title { color: var(--text); font-weight: 600; }
 

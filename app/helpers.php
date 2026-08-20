@@ -155,6 +155,19 @@ if (!function_exists('youtube_id')) {
     }
 }
 
+if (!function_exists('excerpt_truncated')) {
+    /**
+     * True when excerpt() would have had to cut $text at $length. Drives the
+     * "More" affordance on the home-page carousels: the tile shows it only
+     * when there is genuinely more article than fits, so it never promises a
+     * click-through that just repeats what the visitor already read.
+     */
+    function excerpt_truncated(?string $text, int $length): bool
+    {
+        return mb_strlen(\App\Controllers\HomeController::plainText((string) $text)) > $length;
+    }
+}
+
 if (!function_exists('excerpt')) {
     function excerpt(?string $text, int $length = 160): string
     {

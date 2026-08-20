@@ -145,6 +145,7 @@ $router->post('/admin/content/upload-image', [$content, 'uploadImage']);
 $router->get('/admin/content/{id}/edit', [$content, 'edit']);
 $router->post('/admin/content/{id}', [$content, 'update']);
 $router->post('/admin/content/{id}/toggle-suppress', [$content, 'toggleSuppress']);
+$router->post('/admin/content/{id}/rotation/{tile}', [$content, 'setRotation']);
 $router->post('/admin/content/{id}/delete', [$content, 'delete']);
 
 $users = new AdminUserController();
