@@ -1,0 +1,35 @@
+name: Release
+
+# Push a tag like v0.1.0 -> builds tools/build-release.sh and attaches the
+# resulting zip to a GitHub Release. This is the entire download path for
+# someone with no git and no CLI: one file, from a web page.
+#
+# Untested until the repo exists — ubuntu-latest ships Docker preinstalled,
+# which is all build-release.sh needs, but this has not yet fired for real.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release zip
+        run: tools/build-release.sh "${{ steps.version.outputs.version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/portal-lift-${{ steps.version.outputs.version }}.zip
+          generate_release_notes: true

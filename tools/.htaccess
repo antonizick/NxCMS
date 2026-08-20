@@ -1,0 +1,10 @@
+# Not web-exposed — this directory is only ever read by PHP itself.
+# Belt and braces for hosts where the document root ends up at the application
+# root rather than public/.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

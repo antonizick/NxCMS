@@ -1,0 +1,11 @@
+# The Dockerfile only COPYs docker/*.conf and docker/entrypoint.sh — the app
+# tree itself arrives via the docker-compose bind mount at runtime, not the
+# build context. Excluding it here means the build never has to read (or
+# choke on) root/www-data-owned files left behind by a previous install run.
+.git
+vendor/
+storage/uploads/*
+storage/install-token.txt
+storage/installed.lock
+storage/app.env
+.env
