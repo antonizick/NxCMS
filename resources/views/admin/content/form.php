@@ -69,6 +69,23 @@ $action = $id === null ? '/admin/content' : '/admin/content/' . $id;
                 <input type="file" name="image" accept="image/jpeg,image/png,image/webp">
             </div>
 
+            <fieldset class="field-group">
+                <legend>Home page</legend>
+                <p class="field-hint">
+                    Every category already has its own tile except Misc. These put this post into
+                    the rotating carousel on tile 1 or tile 7 as well, whatever its category —
+                    newest <?= (int) ContentPost::ROTATION_LIMIT ?> flagged posts per tile.
+                </p>
+                <label class="checkbox">
+                    <input type="checkbox" name="show_in_profile" value="1" <?= !empty($f['show_in_profile']) ? 'checked' : '' ?>>
+                    Rotate on the profile tile
+                </label>
+                <label class="checkbox">
+                    <input type="checkbox" name="show_in_map" value="1" <?= !empty($f['show_in_map']) ? 'checked' : '' ?>>
+                    Rotate on the map tile
+                </label>
+            </fieldset>
+
             <label class="checkbox">
                 <input type="checkbox" name="is_suppressed" value="1" <?= !empty($f['is_suppressed']) ? 'checked' : '' ?>>
                 Suppress (unpublish — the site treats it as though it never existed)

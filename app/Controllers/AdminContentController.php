@@ -36,11 +36,16 @@ final class AdminContentController extends AdminController
 
         $q = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 120);
 
-        $total = ContentPost::searchAdminCount($category, $q);
+        $rotation = (string) ($_GET['rotation'] ?? 'all');
+        if (!in_array($rotation, ContentPost::ROTATION_FILTERS, true)) {
+            $rotation = 'all';
+        }
+
+        $total = ContentPost::searchAdminCount($category, $q, $rotation);
         $lastPage = max(1, (int) ceil($total / self::PER_PAGE));
         $page = max(1, min($lastPage, (int) ($_GET['page'] ?? 1)));
 
-        $posts = ContentPost::searchAdmin($category, $q, $sort, self::PER_PAGE, ($page - 1) * self::PER_PAGE);
+        $posts = ContentPost::searchAdmin($category, $q, $sort, self::PER_PAGE, ($page - 1) * self::PER_PAGE, $rotation);
 
         View::render('admin/content/index', [
             'pageTitle' => 'Post content — Admin',
@@ -49,6 +54,9 @@ final class AdminContentController extends AdminController
             'category' => $category,
             'sort' => $sort,
             'q' => $q,
+            'rotation' => $rotation,
+            'rotationCounts' => ContentPost::rotationCounts(),
+            'rotationLimit' => ContentPost::ROTATION_LIMIT,
             'page' => $page,
             'lastPage' => $lastPage,
             'total' => $total,
@@ -62,6 +70,7 @@ final class AdminContentController extends AdminController
         $this->form($admin, null, [
             'category' => 'news', 'title' => '', 'author' => Settings::site()['display_name'] ?? '', 'body' => '', 'link_url' => '',
             'image_url' => '', 'published_at' => date('Y-m-d\TH:i'), 'is_suppressed' => 0,
+            'show_in_profile' => 0, 'show_in_map' => 0,
         ]);
     }
 
@@ -193,6 +202,32 @@ final class AdminContentController extends AdminController
         $this->redirect('/admin/content');
     }
 
+    /**
+     * Add or remove a post from one tile's carousel, straight from the list.
+     * Driven by a checkbox that posts the state it now holds (see
+     * ContentPost::setRotation), so curating a rotation doesn't mean opening
+     * and saving every post in turn.
+     */
+    public function setRotation(string $id, string $tile): void
+    {
+        $admin = $this->admin();
+
+        if ($this->csrfOk() && isset(ContentPost::ROTATIONS[$tile])) {
+            $post = ContentPost::findAny((int) $id);
+            if ($post !== null) {
+                $on = !empty($_POST['on']);
+                ContentPost::setRotation((int) $id, $tile, $on);
+                ActivityLog::record(
+                    (int) $admin['id'],
+                    $on ? 'content_rotation_added' : 'content_rotation_removed',
+                    $tile . ' — ' . $post['title']
+                );
+            }
+        }
+
+        $this->redirect($this->listUrl());
+    }
+
     public function toggleSuppress(string $id): void
     {
         $admin = $this->admin();
@@ -207,7 +242,36 @@ final class AdminContentController extends AdminController
                 $post['title'] ?? (string) $id
             );
         }
-        $this->redirect('/admin/content');
+        $this->redirect($this->listUrl());
+    }
+
+    /**
+     * The list URL rebuilt from the filter state the row's form carried, so
+     * a row action lands back on the page it was taken from rather than
+     * resetting to the top of an unfiltered list — which matters a lot once
+     * the point of the screen is working through a filtered set.
+     *
+     * Rebuilt from validated values, never from the Referer header: this
+     * ends up in a Location:, and a redirect target assembled from something
+     * the client controls is how open redirects happen.
+     */
+    private function listUrl(): string
+    {
+        $category = (string) ($_POST['category'] ?? '');
+        $rotation = (string) ($_POST['rotation'] ?? '');
+        $sort = (string) ($_POST['sort'] ?? '');
+        $page = (int) ($_POST['page'] ?? 1);
+
+        $params = [
+            'category' => in_array($category, ContentPost::CATEGORIES, true) ? $category : '',
+            'rotation' => in_array($rotation, ContentPost::ROTATION_FILTERS, true) && $rotation !== 'all' ? $rotation : '',
+            'sort' => array_key_exists($sort, ContentPost::SORTS) && $sort !== 'newest' ? $sort : '',
+            'q' => mb_substr(trim((string) ($_POST['q'] ?? '')), 0, 120),
+            'page' => $page > 1 ? (string) $page : '',
+        ];
+        $params = array_filter($params, static fn(string $v): bool => $v !== '');
+
+        return '/admin/content' . ($params ? '?' . http_build_query($params) : '');
     }
 
     public function delete(string $id): void
@@ -222,7 +286,7 @@ final class AdminContentController extends AdminController
                 ActivityLog::record((int) $admin['id'], 'content_deleted', $post['title']);
             }
         }
-        $this->redirect('/admin/content');
+        $this->redirect($this->listUrl());
     }
 
     /**
@@ -241,6 +305,10 @@ final class AdminContentController extends AdminController
         $linkUrl = trim((string) ($_POST['link_url'] ?? ''));
         $publishedAt = (string) ($_POST['published_at'] ?? '');
         $isSuppressed = !empty($_POST['is_suppressed']) ? 1 : 0;
+        // Home-page tile rotations (tile 1 profile, tile 7 map). Independent
+        // of category — any post can be flagged into either or both.
+        $showInProfile = !empty($_POST['show_in_profile']) ? 1 : 0;
+        $showInMap = !empty($_POST['show_in_map']) ? 1 : 0;
 
         // The hidden image_url field (form.php) starts out holding whatever
         // $currentImageUrl already was, but the edit form's JS overwrites it
@@ -260,7 +328,8 @@ final class AdminContentController extends AdminController
         } catch (\RuntimeException $e) {
             return [
                 ['category' => $category, 'title' => $title, 'author' => $author, 'body' => $body, 'link_url' => $linkUrl,
-                    'image_url' => $imageUrl, 'published_at' => $publishedAt, 'is_suppressed' => $isSuppressed],
+                    'image_url' => $imageUrl, 'published_at' => $publishedAt, 'is_suppressed' => $isSuppressed,
+                    'show_in_profile' => $showInProfile, 'show_in_map' => $showInMap],
                 $e->getMessage(),
             ];
         }
@@ -274,6 +343,8 @@ final class AdminContentController extends AdminController
             'image_url' => $imageUrl,
             'published_at' => $this->parseDate($publishedAt),
             'is_suppressed' => $isSuppressed,
+            'show_in_profile' => $showInProfile,
+            'show_in_map' => $showInMap,
         ];
 
         if (!in_array($category, ContentPost::CATEGORIES, true)) {

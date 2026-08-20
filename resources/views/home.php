@@ -34,47 +34,134 @@ $avatarImages = array_values(array_filter([
 $youtubeArt = $youtube['image_url'] ?? '';
 $workArt = $work['image_url'] ?? '';
 $news2Art = $news2['image_url'] ?? '';
+
+/* Tile 1 / tile 7 carousels. Slide 0 is always the tile's own content — the
+ * profile, the map — and flagged posts follow it. When nothing is flagged
+ * both arrays are empty, no dots render, and each tile lays out exactly as
+ * it did before the carousels existed. */
+$profileSlides = $data['profileRotation'];
+$mapSlides = $data['mapRotation'];
+$hasMap = $site['recon_lat'] !== null && $site['recon_lng'] !== null;
+
+$profileSlideCount = 1 + count($profileSlides);
+$mapSlideCount = ($hasMap ? 1 : 0) + count($mapSlides);
+
+/* The dot row. Rendered only for a genuine rotation: a single dot would be
+ * a position indicator for a position that can't change. */
+$dots = static function (int $count, string $label): string {
+    if ($count < 2) {
+        return '';
+    }
+
+    $out = '<div class="carousel-dots" aria-label="' . e($label) . '">';
+    for ($i = 0; $i < $count; $i++) {
+        $out .= '<button class="carousel-dot' . ($i === 0 ? ' is-active' : '') . '" type="button"'
+            . ' data-slide-to="' . $i . '"'
+            . ($i === 0 ? ' aria-current="true"' : '')
+            . ' aria-label="Show slide ' . ($i + 1) . ' of ' . $count . '"></button>';
+    }
+
+    return $out . '</div>';
+};
+
+/* Body of an article slide, shared by both tiles. The whole slide is the
+ * click target (.stretched), so "More" is an affordance, not a second link.
+ *
+ * Tile 1 is served a deliberately over-long excerpt and clamped to the
+ * space by CSS — see .slide-excerpt in app.css — so its budget is a ceiling
+ * rather than a target. The map tile's budget is the real length. */
+$slideBody = static function (array $p, int $length, bool $clampedByCss = false): string {
+    $out = '<p class="kicker kicker--tag"><span>' . e(\App\Models\ContentPost::LABELS[$p['category']] ?? $p['category']) . '</span></p>'
+        . '<h3 class="slide-title"><a class="stretched" href="' . e(post_url($p)) . '">' . e($p['title']) . '</a></h3>'
+        . '<p class="slide-excerpt">' . e(excerpt($p['body'], $length)) . '</p>'
+        . '<p class="slide-meta">' . e(relative_date($p['published_at'])) . '</p>';
+
+    /* Where CSS clamps the text to the space available, only the browser
+       knows how much fit, so the element always renders and app.js hides it
+       when nothing was actually cut. Elsewhere the character budget is the
+       whole truth and decides here. */
+    if ($clampedByCss || excerpt_truncated($p['body'], $length)) {
+        $out .= '<p class="slide-more"><span>More</span>' . icon('arrow-right', 'icon') . '</p>';
+    }
+
+    return $out;
+};
 ?>
 <div class="portal">
 
-    <!-- ── Tile 1: Profile ───────────────────────────────────────────── -->
-    <section class="tile tile--profile" aria-labelledby="t1">
+    <!-- ── Tile 1: Profile (carousel: profile + flagged posts) ──────── -->
+    <?php $avatarTag = count($avatarImages) > 1 ? 'button' : 'div'; ?>
+    <section class="tile tile--profile<?= $profileSlideCount > 1 ? ' carousel' : '' ?>" aria-labelledby="t1"<?= $profileSlideCount > 1 ? ' data-carousel' : '' ?>>
         <h2 class="sr-only" id="t1">Profile</h2>
 
-        <div class="profile-top">
-            <div class="avatar<?= count($avatarImages) > 1 ? ' avatar--swaps' : '' ?>">
-                <?php foreach ($avatarImages as $i => $img): ?>
-                    <img class="avatar-img<?= $i === 0 ? ' is-active' : '' ?>" src="<?= e($img) ?>"
-                         alt="<?= $i === 0 ? e($site['display_name'] ?? '') : '' ?>" width="160" height="160">
-                <?php endforeach; ?>
-            </div>
+        <?php /* Persistent across every slide, per spec: a sibling of the track
+                 rather than a child of slide 0, so sliding never moves it.
+                 It becomes a real <button> only when there is more than one
+                 photo — a control that can't do anything shouldn't be focusable. */ ?>
+        <<?= $avatarTag ?> class="avatar<?= count($avatarImages) > 1 ? ' avatar--swaps' : '' ?>"<?= $avatarTag === 'button' ? ' type="button" aria-label="Show next photo"' : '' ?>>
+            <?php foreach ($avatarImages as $i => $img): ?>
+                <img class="avatar-img<?= $i === 0 ? ' is-active' : '' ?>" src="<?= e($img) ?>"
+                     alt="<?= $i === 0 ? e($site['display_name'] ?? '') : '' ?>" width="160" height="160">
+            <?php endforeach; ?>
+        </<?= $avatarTag ?>>
 
-            <?php if (($profile['status_phrase'] ?? '') !== ''):
-                $dotColor = (string) ($profile['status_dot_color'] ?? '');
-                $dotColor = preg_match('/^#[0-9a-fA-F]{6}$/', $dotColor) === 1 ? $dotColor : '#2dd4bf';
-            ?>
-                <p class="status"><span class="status-dot" aria-hidden="true" style="background:<?= e($dotColor) ?>;box-shadow:0 0 8px <?= e($dotColor) ?>"></span><?= e($profile['status_phrase']) ?></p>
-            <?php endif; ?>
+        <div class="carousel-viewport">
+            <div class="carousel-track">
+
+                <div class="carousel-slide is-active">
+                    <div class="slide-head">
+                        <?php if (($profile['status_phrase'] ?? '') !== ''):
+                            $dotColor = (string) ($profile['status_dot_color'] ?? '');
+                            $dotColor = preg_match('/^#[0-9a-fA-F]{6}$/', $dotColor) === 1 ? $dotColor : '#2dd4bf';
+                        ?>
+                            <p class="status"><span class="status-dot" aria-hidden="true" style="background:<?= e($dotColor) ?>;box-shadow:0 0 8px <?= e($dotColor) ?>"></span><?= e($profile['status_phrase']) ?></p>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="slide-body">
+                        <?php if (($profile['bio'] ?? '') !== ''): ?>
+                            <p class="bio"><?= nl2br(e($profile['bio'])) ?></p>
+                        <?php endif; ?>
+
+                        <?php if ($socials): ?>
+                            <ul class="socials">
+                                <?php foreach ($socials as $link):
+                                    $key = $link['platform'] === 'other' ? 'globe' : $link['platform'];
+                                    $name = $link['label'] ?: ucfirst((string) $link['platform']); ?>
+                                    <li>
+                                        <a class="social" href="<?= e($link['url']) ?>" rel="me noopener" target="_blank"
+                                           aria-label="<?= e($name) ?>" title="<?= e($name) ?>">
+                                            <?= icon(\App\Support\Icons::has($key) ? $key : 'globe', 'icon') ?>
+                                        </a>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <?php foreach ($profileSlides as $i => $p):
+                    $art = $p['image_url'] ?? '';
+                    /* --i is the slide's position in the strip. These slides are
+                       positioned absolutely (see app.css) so an over-long excerpt
+                       cannot grow the tile, which means each has to be told where
+                       in the strip it belongs. +1 for the profile slide ahead of them. */
+                    $slideStyle = '--i:' . ($i + 1) . ($art !== '' ? ';--art-img:url(\'' . e($art) . '\')' : '');
+                ?>
+                    <div class="carousel-slide carousel-slide--post<?= $art !== '' ? ' has-artbg' : '' ?>" style="<?= $slideStyle ?>">
+                        <div class="slide-head">
+                            <?php if ($art !== ''): ?>
+                                <span class="slide-thumb"><img src="<?= e($art) ?>" alt="" loading="lazy"></span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="slide-body"><?= $slideBody($p, 2000, true) ?></div>
+                    </div>
+                <?php endforeach; ?>
+
+            </div>
         </div>
 
-        <?php if (($profile['bio'] ?? '') !== ''): ?>
-            <p class="bio"><?= nl2br(e($profile['bio'])) ?></p>
-        <?php endif; ?>
-
-        <?php if ($socials): ?>
-            <ul class="socials">
-                <?php foreach ($socials as $link):
-                    $key = $link['platform'] === 'other' ? 'globe' : $link['platform'];
-                    $name = $link['label'] ?: ucfirst((string) $link['platform']); ?>
-                    <li>
-                        <a class="social" href="<?= e($link['url']) ?>" rel="me noopener" target="_blank"
-                           aria-label="<?= e($name) ?>" title="<?= e($name) ?>">
-                            <?= icon(\App\Support\Icons::has($key) ? $key : 'globe', 'icon') ?>
-                        </a>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        <?php endif; ?>
+        <?= $dots($profileSlideCount, 'Profile tile slides') ?>
     </section>
 
     <!-- ── Tile 2: Latest Projects ───────────────────────────────────── -->
@@ -174,14 +261,31 @@ $news2Art = $news2['image_url'] ?? '';
         <?php endif; ?>
     </section>
 
-    <!-- ── Tile 7: Recon ─────────────────────────────────────────────── -->
-    <section class="tile tile--recon" aria-labelledby="t7">
+    <!-- ── Tile 7: Recon (carousel: map + flagged posts) ─────────────── -->
+    <section class="tile tile--recon<?= $mapSlideCount > 1 ? ' carousel' : '' ?>" aria-labelledby="t7"<?= $mapSlideCount > 1 ? ' data-carousel' : '' ?>>
         <h2 class="sr-only" id="t7">Location</h2>
-        <?php if ($site['recon_lat'] !== null && $site['recon_lng'] !== null): ?>
-            <?= \App\Support\Map::render((float) $site['recon_lat'], (float) $site['recon_lng'], (string) ($site['recon_location_label'] ?? '')) ?>
-            <p class="recon-pill"><?= icon('map-pin', 'icon') ?><span><?= e($site['recon_location_label'] ?? '') ?></span></p>
-            <p class="recon-time"><?= e(\App\Support\Map::localTime($site['recon_timezone'] ?? null)) ?></p>
-        <?php endif; ?>
+
+        <div class="carousel-viewport">
+            <div class="carousel-track">
+
+                <?php if ($hasMap): ?>
+                    <div class="carousel-slide carousel-slide--map is-active">
+                        <?= \App\Support\Map::render((float) $site['recon_lat'], (float) $site['recon_lng'], (string) ($site['recon_location_label'] ?? '')) ?>
+                        <p class="recon-pill"><?= icon('map-pin', 'icon') ?><span><?= e($site['recon_location_label'] ?? '') ?></span></p>
+                        <p class="recon-time"><?= e(\App\Support\Map::localTime($site['recon_timezone'] ?? null)) ?></p>
+                    </div>
+                <?php endif; ?>
+
+                <?php foreach ($mapSlides as $i => $p): $art = $p['image_url'] ?? ''; ?>
+                    <div class="carousel-slide carousel-slide--post carousel-slide--pad<?= !$hasMap && $i === 0 ? ' is-active' : '' ?><?= $art !== '' ? ' has-artbg' : '' ?>"<?= $art !== '' ? ' style="--art-img:url(\'' . e($art) . '\')"' : '' ?>>
+                        <?= $slideBody($p, 320) ?>
+                    </div>
+                <?php endforeach; ?>
+
+            </div>
+        </div>
+
+        <?= $dots($mapSlideCount, 'Location tile slides') ?>
     </section>
 
     <!-- ── Tile 8: News2 (second most recent) ────────────────────────── -->
