@@ -15,7 +15,7 @@ $self = (int) $data['admin']['id'];
 
     <div class="archive-table-wrap">
         <table class="archive-table">
-            <thead><tr><th>Username</th><th>Status</th><th>MFA</th><th>Last login</th><th></th></tr></thead>
+            <thead><tr><th>Username</th><th>Status</th><th>Password</th><th>MFA</th><th>Last login</th><th></th></tr></thead>
             <tbody>
                 <?php foreach ($admins as $a): ?>
                     <tr>
@@ -25,6 +25,7 @@ $self = (int) $data['admin']['id'];
                             <?php if ((int) $a['id'] === $self): ?><span class="badge">you</span><?php endif; ?>
                         </td>
                         <td data-label="Status"><span class="badge <?= $a['status'] === 'active' ? 'badge--ok' : 'badge--off' ?>"><?= e($a['status']) ?></span></td>
+                        <td data-label="Password"><?= $a['must_change_password'] ? 'Pending change' : '&mdash;' ?></td>
                         <td data-label="MFA"><?= $a['mfa_enabled'] ? 'Enabled' : ($a['force_mfa_setup'] ? 'Pending setup' : 'Off') ?></td>
                         <td data-label="Last login"><?= $a['last_login_at'] ? e(fmt_date($a['last_login_at'], 'j M Y, g:i a')) : '&mdash;' ?></td>
                         <td data-label="" class="crud-actions">

@@ -123,7 +123,11 @@ final class AdminUserController extends AdminController
         $this->redirect('/admin/users');
     }
 
-    /** Generates a one-time temp password, shown exactly once on the next edit-page render. */
+    /**
+     * Generates a one-time temp password, shown exactly once on the next
+     * edit-page render. The account must replace it on its next login —
+     * enforced in AuthController, not just implied by the UI.
+     */
     public function resetPassword(string $id): void
     {
         $admin = $this->admin();
@@ -132,7 +136,7 @@ final class AdminUserController extends AdminController
 
         if ($this->csrfOk() && $target !== null) {
             $temp = rtrim(strtr(base64_encode(random_bytes(15)), '+/', '-_'), '=');
-            Admin::updatePasswordHash($targetId, password_hash($temp, PASSWORD_ARGON2ID));
+            Admin::forcePasswordChange($targetId, password_hash($temp, PASSWORD_ARGON2ID));
             $_SESSION['admin_temp_password_display'] = ['id' => $targetId, 'password' => $temp];
             ActivityLog::record((int) $admin['id'], 'admin_password_reset', $target['username']);
         }

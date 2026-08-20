@@ -52,7 +52,7 @@ final class Admin
     public static function all(): array
     {
         return Database::connection()->query(
-            'SELECT id, username, is_protected, status, mfa_enabled, force_mfa_setup, last_login_at, created_at
+            'SELECT id, username, is_protected, status, mfa_enabled, force_mfa_setup, must_change_password, last_login_at, created_at
                FROM admins ORDER BY is_protected DESC, username'
         )->fetchAll();
     }
@@ -90,6 +90,22 @@ final class Admin
     {
         Database::connection()
             ->prepare('UPDATE admins SET password_hash = :h WHERE id = :id')
+            ->execute([':h' => $hash, ':id' => $id]);
+    }
+
+    /** Sets a one-time temp password; the account is forced to replace it on next login. */
+    public static function forcePasswordChange(int $id, string $hash): void
+    {
+        Database::connection()
+            ->prepare('UPDATE admins SET password_hash = :h, must_change_password = 1 WHERE id = :id')
+            ->execute([':h' => $hash, ':id' => $id]);
+    }
+
+    /** The account setting its own new password in response to forcePasswordChange(). */
+    public static function completePasswordChange(int $id, string $hash): void
+    {
+        Database::connection()
+            ->prepare('UPDATE admins SET password_hash = :h, must_change_password = 0 WHERE id = :id')
             ->execute([':h' => $hash, ':id' => $id]);
     }
 

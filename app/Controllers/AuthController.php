@@ -62,16 +62,53 @@ final class AuthController
         }
 
         Auth::startPending((int) $admin['id']);
+        $this->redirectAfterPassword($admin);
+    }
 
-        if ($admin['force_mfa_setup']) {
-            $this->redirect('/admin/mfa/setup');
-        } elseif ($admin['mfa_enabled']) {
-            $this->redirect('/admin/mfa/verify');
-        } else {
-            // Defensive fallback only — admins.force_mfa_setup defaults to 1,
-            // so a non-enrolled account should never reach this branch.
-            $this->redirect('/admin/mfa/setup');
+    // ── Forced password change (temp password from an admin reset) ─────
+
+    public function showPasswordChange(): void
+    {
+        $admin = Auth::pendingAdmin();
+        if ($admin === null || !$admin['must_change_password']) {
+            $this->redirect('/admin/login');
+            return;
         }
+
+        View::render('admin/password_change', [
+            'pageTitle' => 'Set a new password — Admin',
+        ], 'layouts/admin');
+    }
+
+    public function changePassword(): void
+    {
+        $admin = Auth::pendingAdmin();
+        if ($admin === null || !$admin['must_change_password']) {
+            $this->redirect('/admin/login');
+            return;
+        }
+
+        $password = (string) ($_POST['password'] ?? '');
+        $confirm = (string) ($_POST['password_confirm'] ?? '');
+
+        if (!Csrf::check($_POST['_csrf'] ?? null)) {
+            $this->renderPasswordChange('Session expired — please try again.');
+            return;
+        }
+        if (strlen($password) < 12) {
+            $this->renderPasswordChange('Password must be at least 12 characters.');
+            return;
+        }
+        if ($password !== $confirm) {
+            $this->renderPasswordChange('Passwords do not match.');
+            return;
+        }
+
+        $adminId = (int) $admin['id'];
+        Admin::completePasswordChange($adminId, password_hash($password, PASSWORD_ARGON2ID));
+        ActivityLog::record($adminId, 'admin_password_changed', $admin['username']);
+
+        $this->redirectAfterPassword((array) Admin::find($adminId));
     }
 
     // ── MFA enrollment (forced on first login / after an admin reset) ──
@@ -81,6 +118,10 @@ final class AuthController
         $admin = Auth::pendingAdmin();
         if ($admin === null) {
             $this->redirect('/admin/login');
+            return;
+        }
+        if ($admin['must_change_password']) {
+            $this->redirect('/admin/password/change');
             return;
         }
 
@@ -102,6 +143,10 @@ final class AuthController
         $admin = Auth::pendingAdmin();
         if ($admin === null) {
             $this->redirect('/admin/login');
+            return;
+        }
+        if ($admin['must_change_password']) {
+            $this->redirect('/admin/password/change');
             return;
         }
 
@@ -167,6 +212,10 @@ final class AuthController
     public function showMfaVerify(): void
     {
         $admin = Auth::pendingAdmin();
+        if ($admin !== null && $admin['must_change_password']) {
+            $this->redirect('/admin/password/change');
+            return;
+        }
         if ($admin === null || !$admin['mfa_enabled'] || $admin['force_mfa_setup']) {
             $this->redirect('/admin/login');
             return;
@@ -180,6 +229,10 @@ final class AuthController
     public function mfaVerify(): void
     {
         $admin = Auth::pendingAdmin();
+        if ($admin !== null && $admin['must_change_password']) {
+            $this->redirect('/admin/password/change');
+            return;
+        }
         if ($admin === null || !$admin['mfa_enabled'] || $admin['force_mfa_setup']) {
             $this->redirect('/admin/login');
             return;
@@ -312,6 +365,35 @@ final class AuthController
         } catch (\Throwable $e) {
             error_log('Migrator::runPending failed: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Where to send an admin once their password is no longer in question —
+     * right after login, and again after a forced password change completes.
+     * must_change_password wins over everything else: no point starting MFA
+     * enrollment against an account that's about to log itself out.
+     */
+    private function redirectAfterPassword(array $admin): void
+    {
+        if ($admin['must_change_password']) {
+            $this->redirect('/admin/password/change');
+        } elseif ($admin['force_mfa_setup']) {
+            $this->redirect('/admin/mfa/setup');
+        } elseif ($admin['mfa_enabled']) {
+            $this->redirect('/admin/mfa/verify');
+        } else {
+            // Defensive fallback only — admins.force_mfa_setup defaults to 1,
+            // so a non-enrolled account should never reach this branch.
+            $this->redirect('/admin/mfa/setup');
+        }
+    }
+
+    private function renderPasswordChange(string $error): void
+    {
+        View::render('admin/password_change', [
+            'pageTitle' => 'Set a new password — Admin',
+            'error' => $error,
+        ], 'layouts/admin');
     }
 
     private function renderLogin(string $error): void

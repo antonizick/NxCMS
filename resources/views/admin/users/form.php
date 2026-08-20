@@ -25,7 +25,8 @@ $isSelf = $target !== null && (int) $target['id'] === (int) $data['admin']['id']
     <?php if ($tempPassword !== null): ?>
         <p class="notice notice--ok" role="status">
             New temporary password (shown once &mdash; copy it now):<br>
-            <code><?= e($tempPassword) ?></code>
+            <code><?= e($tempPassword) ?></code><br>
+            They'll be required to set a new password the moment they log in with it.
         </p>
     <?php endif; ?>
 
@@ -61,7 +62,7 @@ $isSelf = $target !== null && (int) $target['id'] === (int) $data['admin']['id']
 
         <fieldset class="field-group" style="margin-top:1.5rem">
             <legend>Account recovery</legend>
-            <form method="post" action="/admin/users/<?= $id ?>/reset-password" style="display:inline-block;margin-right:.5rem">
+            <form method="post" action="/admin/users/<?= $id ?>/reset-password" style="display:inline-block;margin-right:.5rem" data-confirm="This replaces their password with a one-time temp password &mdash; they'll be forced to set a new one on their next login. Continue?">
                 <?= Csrf::field() ?>
                 <button class="btn btn--ghost" type="submit"><span>Reset password</span></button>
             </form>

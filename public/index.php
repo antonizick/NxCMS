@@ -95,6 +95,8 @@ $auth = new AuthController();
 $router->get('/admin', [$auth, 'dashboard']);
 $router->get('/admin/login', [$auth, 'showLogin']);
 $router->post('/admin/login', [$auth, 'login']);
+$router->get('/admin/password/change', [$auth, 'showPasswordChange']);
+$router->post('/admin/password/change', [$auth, 'changePassword']);
 $router->get('/admin/mfa/setup', [$auth, 'showMfaSetup']);
 $router->post('/admin/mfa/setup', [$auth, 'mfaSetup']);
 $router->get('/admin/mfa/verify', [$auth, 'showMfaVerify']);
