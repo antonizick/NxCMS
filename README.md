@@ -19,6 +19,9 @@ JavaScript toolchain. If your web host can run WordPress, it can run this.
 
 - **Public portal** — nine configurable tiles: profile, projects, skills, posts, a
   location map, and a contact form
+- **Rotating tiles** — feature any post in a carousel on the profile or map tile,
+  with pagination dots, click-to-jump, and pause on hover. Curate membership from
+  the post list without opening each post.
 - **Admin CMS** — write posts, manage projects and skills, upload images, edit every
   piece of copy and both colour themes without touching a file
 - **Security** — mandatory TOTP two-factor for admins, CSRF protection, a nonce-based

@@ -1,5 +1,17 @@
 # Upgrading
 
+## 0.1.0 → 0.2.0
+
+Adds the Misc category and the profile/map tile carousels. One migration
+(`010_misc_category_and_tile_rotations.sql`) applies itself on the next admin
+login, as below.
+
+Nothing on your home page changes on upgrade. The new rotations start empty,
+and both tiles render exactly as they did until you flag a post into one —
+from the post editor, or the Carousel column on the post list. The sample
+content the migration seeds is skipped entirely on any install where "Delete
+demo content" has already been used, so an established site is untouched.
+
 Every release is a drop-in file replace. There is no upgrade wizard and no CLI
 step required — schema changes apply themselves the next time an admin logs in.
 
