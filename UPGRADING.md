@@ -1,5 +1,13 @@
 # Upgrading
 
+## 0.2.2 → 0.2.3
+
+Code only — no migration. The dark-theme ambient scanline was at a 5% peak
+opacity, easy to miss entirely; it's now 14%. Light theme previously had no
+equivalent (the element was `display:none`'d there) — it now gets its own
+animation, a soft diagonal sheen distinct in shape and pace from the dark
+scanline, at matching restraint.
+
 ## 0.2.1 → 0.2.2
 
 Code only — no migration. Adds an optional `ADMIN_URL` env var (alongside
