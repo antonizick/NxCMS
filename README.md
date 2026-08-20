@@ -6,20 +6,11 @@ MFA-protected admin panel behind it.
 > **Status: pre-release, under active development.** There is no installable release yet.
 > Watch the Releases page.
 
-> **Screenshots below are placeholders.** This README shows the real app before explaining
-> it, but there are no reviewed screenshots yet. Raw captures go in RemoteBox at
-> `portal.lift/docs-review/readme-hero-screenshots/` (see that folder's `README.md` for
-> exact filenames and what each shot should show) — not directly into the repo. They get
-> reviewed and copied into `docs/screenshots/readme/` from there, and this section gets
-> updated to show them for real.
-
 **Public homepage — dark theme, desktop width.**
-`docs/screenshots/readme/hero-public-homepage.png`
-*(placeholder — see note above)*
+![Public homepage](docs/screenshots/readme/hero-public-homepage.png)
 
 **Admin dashboard, logged in.**
-`docs/screenshots/readme/hero-admin-dashboard.png`
-*(placeholder — see note above)*
+![Admin dashboard](docs/screenshots/readme/hero-admin-dashboard.png)
 
 ## What it is
 
