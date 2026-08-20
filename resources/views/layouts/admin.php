@@ -57,10 +57,13 @@ $currentPath = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_
         </span>
 
         <?php if ($admin): ?>
-        <form method="post" action="/admin/logout" class="admin-signout">
-            <?= \App\Core\Csrf::field() ?>
-            <button class="btn btn--ghost btn--small" type="submit"><span>Sign out</span></button>
-        </form>
+        <div class="admin-signout">
+            <a class="btn btn--ghost btn--small" href="/admin/users/<?= (int) $admin['id'] ?>/edit"><span>My account</span></a>
+            <form method="post" action="/admin/logout" style="display:inline">
+                <?= \App\Core\Csrf::field() ?>
+                <button class="btn btn--ghost btn--small" type="submit"><span>Sign out</span></button>
+            </form>
+        </div>
         <?php endif; ?>
     </header>
 

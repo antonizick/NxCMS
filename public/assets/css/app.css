@@ -1383,7 +1383,7 @@ button.avatar:focus-visible { outline: 2px solid var(--accent); outline-offset: 
 .shell--admin main.has-nav { align-items: flex-start; padding-top: 4px; }
 .shell--admin .page--wide { width: 100%; }
 
-.admin-signout { margin: 0; }
+.admin-signout { display: flex; align-items: center; gap: 8px; margin: 0; }
 
 .admin-nav {
     display: flex; flex-wrap: wrap; gap: 6px;
