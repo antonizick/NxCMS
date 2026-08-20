@@ -1,4 +1,4 @@
-# portal-lift
+# NxCMS
 
 A self-hostable personal portal and portfolio CMS — a nine-tile public homepage with an
 MFA-protected admin panel behind it.

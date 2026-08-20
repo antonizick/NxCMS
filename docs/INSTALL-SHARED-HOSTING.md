@@ -2,7 +2,7 @@
 
 This guide assumes you've never opened a terminal, never used SSH, and don't have
 access to one on your hosting account. Everything here happens through your web
-browser: your host's control panel, and the installer built into portal.lift itself.
+browser: your host's control panel, and the installer built into NxCMS itself.
 
 If your host gives you SSH and you're comfortable with it, you can move faster than
 this guide — but nothing here requires it.
@@ -84,7 +84,7 @@ You'll need:
 ## Step 2 — Download the release
 
 Go to the [Releases page](../../../releases) and download the newest
-`portal-lift-<version>.zip`. Save it somewhere you can find it — you'll upload this
+`nxcms-<version>.zip`. Save it somewhere you can find it — you'll upload this
 exact file in the next step. Don't unzip it on your computer; upload it zipped.
 
 > 📸 **Screenshot needed — `01-download-release.png`**
@@ -126,7 +126,7 @@ alternative in the box below, but it's optional.
 > If your host exposes this option, a screenshot of that settings screen.
 
 > 📸 **Screenshot needed — `06-file-manager-upload.png`**
-> The File Manager upload dialog with `portal-lift-<version>.zip` selected,
+> The File Manager upload dialog with `nxcms-<version>.zip` selected,
 > inside `public_html`.
 
 > 📸 **Screenshot needed — `07-file-manager-extract.png`**
@@ -172,7 +172,7 @@ To find it:
 
 ## Step 5 — Server check
 
-The installer checks that your host actually has what portal.lift needs: the
+The installer checks that your host actually has what NxCMS needs: the
 right PHP version, the `pdo_mysql`, `gd`, `mbstring`, and `openssl` extensions, and
 that the config location and uploads folder are writable. Everything should show a
 green checkmark.
@@ -241,7 +241,7 @@ This step creates your site's identity and your first admin login in one form:
 
 ## Step 8 — Set up two-factor authentication
 
-portal.lift requires two-factor authentication (MFA) for every admin account —
+NxCMS requires two-factor authentication (MFA) for every admin account —
 there's no way to turn it off, by design. You'll need an authenticator app on your
 phone: Google Authenticator, Authy, 1Password, and Microsoft Authenticator all
 work.

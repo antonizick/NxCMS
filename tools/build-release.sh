@@ -31,7 +31,7 @@ STRIP=(
 
 REPO_ROOT="$(pwd)"
 DIST_DIR="dist"
-ZIP="$DIST_DIR/portal-lift-$VERSION.zip"
+ZIP="$DIST_DIR/nxcms-$VERSION.zip"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 

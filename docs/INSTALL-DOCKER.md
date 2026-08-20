@@ -29,8 +29,8 @@ source checkout to use them.
 **1. Get the source.**
 
 ```bash
-git clone https://github.com/<owner>/portal-lift.git
-cd portal-lift
+git clone https://github.com/antonizick/NxCMS.git
+cd NxCMS
 ```
 
 **2. Start it.**

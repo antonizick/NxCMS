@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # leakcheck.sh — refuse to ship anything carrying the origin install's identity.
 #
-# portal-lift began life as one person's live site. Every release must be free of that
+# NxCMS began life as one person's live site. Every release must be free of that
 # origin's hostnames, shell user, database name, and key paths. This runs before the
 # first commit and again on every release build — the check is the mechanism, not the
 # one-time cleanup.
