@@ -1,0 +1,25 @@
+# Dependencies — bundled into release zips, not committed
+/vendor/
+
+# Secrets and per-install state
+.env
+/storage/app.env
+/storage/installed.lock
+
+# User uploads
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+
+# Build output
+/dist/
+/build/
+
+# Lucent-internal project-mode files — never published
+/CLAUDE.md
+/AGENTS.md
+/.lucentrc
+/planning.md
+
+*.log
+.DS_Store
+Thumbs.db

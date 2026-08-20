@@ -1,0 +1,214 @@
+<?php
+/**
+ * Public portal home — the 9-tile grid from Portal Layout.png.
+ *
+ * @var array<string, mixed> $data
+ */
+
+declare(strict_types=1);
+
+$site = $data['site'];
+$profile = $data['profile'];
+$socials = $data['socials'];
+$projects = $data['projects'];
+$skills = $data['skills'];
+$news1 = $data['news1'];
+$news2 = $data['news2'];
+$youtube = $data['youtube'];
+$work = $data['projectWork'];
+
+$headshot = $profile['headshot_url'] ?? null;
+$logo = $profile['logo_url'] ?? null;
+
+/* Avatar rotation frames — headshot first (used for alt text), then logo and
+ * up to two extra photos, in upload-slot order. Missing slots are simply
+ * absent from the list, per spec. app.js's oscillator and the .avatar-img
+ * CSS both already operate generically over however many frames render. */
+$avatarImages = array_values(array_filter([
+    $headshot,
+    $logo,
+    $profile['photo3_url'] ?? null,
+    $profile['photo4_url'] ?? null,
+], static fn($url) => $url !== null && $url !== ''));
+
+$youtubeArt = $youtube['image_url'] ?? '';
+$workArt = $work['image_url'] ?? '';
+$news2Art = $news2['image_url'] ?? '';
+?>
+<div class="portal">
+
+    <!-- ── Tile 1: Profile ───────────────────────────────────────────── -->
+    <section class="tile tile--profile" aria-labelledby="t1">
+        <h2 class="sr-only" id="t1">Profile</h2>
+
+        <div class="profile-top">
+            <div class="avatar<?= count($avatarImages) > 1 ? ' avatar--swaps' : '' ?>">
+                <?php foreach ($avatarImages as $i => $img): ?>
+                    <img class="avatar-img<?= $i === 0 ? ' is-active' : '' ?>" src="<?= e($img) ?>"
+                         alt="<?= $i === 0 ? e($site['display_name'] ?? '') : '' ?>" width="160" height="160">
+                <?php endforeach; ?>
+            </div>
+
+            <?php if (($profile['status_phrase'] ?? '') !== ''):
+                $dotColor = (string) ($profile['status_dot_color'] ?? '');
+                $dotColor = preg_match('/^#[0-9a-fA-F]{6}$/', $dotColor) === 1 ? $dotColor : '#2dd4bf';
+            ?>
+                <p class="status"><span class="status-dot" aria-hidden="true" style="background:<?= e($dotColor) ?>;box-shadow:0 0 8px <?= e($dotColor) ?>"></span><?= e($profile['status_phrase']) ?></p>
+            <?php endif; ?>
+        </div>
+
+        <?php if (($profile['bio'] ?? '') !== ''): ?>
+            <p class="bio"><?= nl2br(e($profile['bio'])) ?></p>
+        <?php endif; ?>
+
+        <?php if ($socials): ?>
+            <ul class="socials">
+                <?php foreach ($socials as $link):
+                    $key = $link['platform'] === 'other' ? 'globe' : $link['platform'];
+                    $name = $link['label'] ?: ucfirst((string) $link['platform']); ?>
+                    <li>
+                        <a class="social" href="<?= e($link['url']) ?>" rel="me noopener" target="_blank"
+                           aria-label="<?= e($name) ?>" title="<?= e($name) ?>">
+                            <?= icon(\App\Support\Icons::has($key) ? $key : 'globe', 'icon') ?>
+                        </a>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </section>
+
+    <!-- ── Tile 2: Latest Projects ───────────────────────────────────── -->
+    <section class="tile tile--projects" aria-labelledby="t2">
+        <h2 class="tile-label" id="t2">Latest Projects</h2>
+
+        <?php if ($projects): ?>
+            <ul class="project-list">
+                <?php foreach ($projects as $p):
+                    /* Row-wide click target — Link-URL wins over GitHub when both exist,
+                       per spec; a row with neither stays plain (nothing to click through to). */
+                    $rowLink = ($p['external_url'] ?? '') !== '' ? $p['external_url']
+                        : ((($p['github_url'] ?? '') !== '') ? $p['github_url'] : null);
+                ?>
+                    <li class="project">
+                        <h3 class="project-title">
+                            <?php if ($rowLink !== null): ?>
+                                <a class="stretched" href="<?= e($rowLink) ?>" target="_blank" rel="noopener"><?= e($p['title']) ?></a>
+                            <?php else: ?>
+                                <?= e($p['title']) ?>
+                            <?php endif; ?>
+                        </h3>
+                        <p class="project-desc"><?= e($p['description']) ?></p>
+                        <div class="project-links">
+                            <?php if (($p['github_url'] ?? '') !== ''): ?>
+                                <a href="<?= e($p['github_url']) ?>" target="_blank" rel="noopener"
+                                   aria-label="<?= e($p['title']) ?> on GitHub"><?= icon('github', 'icon') ?></a>
+                            <?php endif; ?>
+                            <?php if (($p['external_url'] ?? '') !== ''): ?>
+                                <a href="<?= e($p['external_url']) ?>" target="_blank" rel="noopener"
+                                   aria-label="<?= e($p['title']) ?> website"><?= icon('external-link', 'icon') ?></a>
+                            <?php endif; ?>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </section>
+
+    <!-- ── Tile 3: Toolbox ───────────────────────────────────────────── -->
+    <section class="tile tile--toolbox" aria-labelledby="t3">
+        <h2 class="tile-label" id="t3">Toolbox</h2>
+
+        <?php if ($skills): ?>
+            <ul class="chips">
+                <?php foreach ($skills as $s): ?>
+                    <li class="chip"><?= icon($s['icon_key'] ?: 'box', 'icon') ?><span><?= e($s['name']) ?></span></li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </section>
+
+    <!-- ── Tile 4: News (most recent) ────────────────────────────────── -->
+    <section class="tile tile--news1" aria-labelledby="t4">
+        <?php if ($news1): ?>
+            <h2 class="news1-title" id="t4">
+                <a class="stretched" href="<?= e(post_url($news1)) ?>"><?= e($news1['title']) ?></a>
+            </h2>
+            <p class="news1-excerpt"><?= e(excerpt($news1['body'], 330)) ?></p>
+            <div class="news1-art">
+                <?php if (($news1['image_url'] ?? '') !== ''): ?>
+                    <img src="<?= e($news1['image_url']) ?>" alt="" loading="lazy">
+                <?php endif; ?>
+            </div>
+            <p class="datestamp"><?= icon('calendar', 'icon') ?><span><?= e(fmt_date($news1['published_at'])) ?></span></p>
+            <p class="read-more"><span>Read the full analysis</span><?= icon('arrow-right', 'icon') ?></p>
+        <?php else: ?>
+            <h2 class="sr-only" id="t4">News</h2>
+        <?php endif; ?>
+    </section>
+
+    <!-- ── Tile 5: YouTube ───────────────────────────────────────────── -->
+    <section class="tile tile--youtube<?= $youtubeArt !== '' ? ' has-artbg' : '' ?>" aria-labelledby="t5"<?= $youtubeArt !== '' ? ' style="--art-img:url(\'' . e($youtubeArt) . '\')"' : '' ?>>
+        <?php if ($youtube): ?>
+            <p class="kicker kicker--yt"><?= icon('play', 'icon') ?><span>Watch</span></p>
+            <h2 class="card-title" id="t5">
+                <a class="stretched" href="<?= e(post_url($youtube)) ?>"><?= e($youtube['title']) ?></a>
+            </h2>
+            <p class="card-desc"><?= e(excerpt($youtube['body'], 150)) ?></p>
+            <p class="card-meta"><?= icon('youtube', 'icon icon--yt-badge') ?>YouTube &middot; <?= e(relative_date($youtube['published_at'])) ?></p>
+        <?php else: ?>
+            <h2 class="sr-only" id="t5">YouTube</h2>
+        <?php endif; ?>
+    </section>
+
+    <!-- ── Tile 6: Project Work ──────────────────────────────────────── -->
+    <section class="tile tile--work<?= $workArt !== '' ? ' has-artbg' : '' ?>" aria-labelledby="t6"<?= $workArt !== '' ? ' style="--art-img:url(\'' . e($workArt) . '\')"' : '' ?>>
+        <?php if ($work): ?>
+            <p class="kicker kicker--tag"><span>Project Work</span></p>
+            <h2 class="card-title" id="t6">
+                <a class="stretched" href="<?= e(post_url($work)) ?>"><?= e($work['title']) ?></a>
+            </h2>
+            <p class="card-desc"><?= e(excerpt($work['body'], 170)) ?></p>
+            <p class="card-meta"><?= e(relative_date($work['published_at'])) ?></p>
+        <?php else: ?>
+            <h2 class="sr-only" id="t6">Project work</h2>
+        <?php endif; ?>
+    </section>
+
+    <!-- ── Tile 7: Recon ─────────────────────────────────────────────── -->
+    <section class="tile tile--recon" aria-labelledby="t7">
+        <h2 class="sr-only" id="t7">Location</h2>
+        <?php if ($site['recon_lat'] !== null && $site['recon_lng'] !== null): ?>
+            <?= \App\Support\Map::render((float) $site['recon_lat'], (float) $site['recon_lng'], (string) ($site['recon_location_label'] ?? '')) ?>
+            <p class="recon-pill"><?= icon('map-pin', 'icon') ?><span><?= e($site['recon_location_label'] ?? '') ?></span></p>
+            <p class="recon-time"><?= e(\App\Support\Map::localTime($site['recon_timezone'] ?? null)) ?></p>
+        <?php endif; ?>
+    </section>
+
+    <!-- ── Tile 8: News2 (second most recent) ────────────────────────── -->
+    <section class="tile tile--news2<?= $news2Art !== '' ? ' has-artbg' : '' ?>" aria-labelledby="t8"<?= $news2Art !== '' ? ' style="--art-img:url(\'' . e($news2Art) . '\')"' : '' ?>>
+        <?php if ($news2): ?>
+            <span class="news2-glyph" aria-hidden="true"><?= icon('newspaper', 'icon') ?></span>
+            <h2 class="card-title" id="t8">
+                <a class="stretched" href="<?= e(post_url($news2)) ?>"><?= e($news2['title']) ?></a>
+            </h2>
+            <p class="card-desc"><?= e(excerpt($news2['body'], 320)) ?></p>
+            <p class="card-meta"><?= e(relative_date($news2['published_at'])) ?></p>
+        <?php else: ?>
+            <h2 class="sr-only" id="t8">More news</h2>
+        <?php endif; ?>
+    </section>
+
+    <!-- ── Tile 9: Contact ───────────────────────────────────────────── -->
+    <section class="tile tile--contact" aria-labelledby="t9">
+        <div>
+            <h2 class="contact-title" id="t9"><?= e($site['contact_main_title'] ?? '') ?></h2>
+            <?php if (($site['contact_sub_title'] ?? '') !== ''): ?>
+                <p class="contact-sub"><?= e($site['contact_sub_title']) ?></p>
+            <?php endif; ?>
+        </div>
+        <a class="btn btn--accent" href="/contact">
+            <span><?= e($site['contact_button_text'] ?: 'Say hello') ?></span><?= icon('arrow-right', 'icon') ?>
+        </a>
+    </section>
+
+</div>

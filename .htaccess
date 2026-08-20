@@ -1,0 +1,31 @@
+# Document-root shim.
+#
+# The friendliest install is "unzip everything into public_html", which puts the
+# application root at the document root. The real front controller lives in
+# public/, so this file forwards requests there and blocks direct access to the
+# application internals on the way past.
+#
+# If your host lets you point the document root at public/ directly, that is the
+# better setup and this file is simply never consulted.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Application internals are never reachable over HTTP.
+    RewriteRule ^(app|config|database|resources|storage|tools|vendor)(/|$) - [F,L]
+
+    # Dotfiles — .env above all.
+    RewriteRule (^|/)\. - [F,L]
+
+    # Everything else is served by the front controller in public/.
+    RewriteCond %{REQUEST_URI} !/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    # Without mod_rewrite this application cannot route at all. Fail loudly
+    # rather than serving a directory listing of the source tree.
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</IfModule>

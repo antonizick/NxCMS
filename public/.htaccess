@@ -1,0 +1,47 @@
+RewriteEngine On
+
+# OPTIONAL — canonicalize www to the bare domain. Uncomment and replace
+# example.com with your own domain if your TLS certificate does not cover the
+# www subdomain. It must run before the host-preserving HTTPS rule below, or
+# www visitors get redirected into a certificate-mismatch error.
+#
+#   RewriteCond %{HTTP_HOST} ^www\.example\.com$ [NC]
+#   RewriteRule ^ https://example.com%{REQUEST_URI} [L,R=301]
+
+# Force HTTPS. Some hosts terminate TLS upstream and forward plain HTTP with
+# X-Forwarded-Proto, so check both signals before redirecting. The bundled
+# Docker image sets PORTAL_LOCAL_HTTP (docker/apache-portal.conf) because it
+# has no TLS of its own and nothing in front of it — real shared-hosting
+# deployments never set this, so the redirect stays on for them.
+RewriteCond %{ENV:PORTAL_LOCAL_HTTP} !1
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Route everything except real files/directories through the front controller.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header always set Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=(), usb=(), interest-cohort=()"
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml application/xml
+</IfModule>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    # asset() cache-busts every href/src with ?v=<mtime>, so a year-long
+    # cache is safe: a deploy changes the URL, not just the file.
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+</IfModule>

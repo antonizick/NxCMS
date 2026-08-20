@@ -1,0 +1,57 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-portal}
+      MYSQL_USER: ${DB_USERNAME:-portal}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
+    ports:
+      # Bound to loopback only — this is for inspecting the database with a
+      # local client, not for exposing MySQL to the network.
+      - "127.0.0.1:${DB_PORT:-8118}:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot: installs vendor/ into the bind-mounted repo, then exits. `web`
+  # waits for it to finish successfully before starting, so autoload.php is
+  # always present on first boot.
+  composer:
+    image: composer:2
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: ["install", "--no-interaction", "--no-progress", "--optimize-autoloader"]
+
+  web:
+    build: .
+    restart: unless-stopped
+    environment:
+      # storage/ is already chowned to www-data by docker/entrypoint.sh, so
+      # the installer can write here. The repo-root .env stays host-owned and
+      # untouched — it's Docker Compose's own bootstrap file, which the host
+      # CLI must keep being able to read for every future `docker compose`
+      # command, not the app's runtime config.
+      PORTAL_ENV_FILE: /var/www/html/storage/app.env
+    depends_on:
+      db:
+        condition: service_healthy
+      composer:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8117}:80"
+    volumes:
+      # Bind-mounted, not copied: the installer writes .env and
+      # storage/installed.lock here, and both need to survive `docker compose
+      # restart` the same way they would on a real host.
+      - .:/var/www/html
+
+volumes:
+  db-data:
