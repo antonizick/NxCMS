@@ -15,6 +15,7 @@ use App\Support\Theme;
 $site = $data['site'] ?? Settings::site();
 $theme = Theme::current();
 $appUrl = rtrim(\App\Core\Config::get('app')['url'] ?? '', '/');
+$adminUrl = (string) (\App\Core\Config::get('app')['admin_url'] ?? '');
 $canonical = $appUrl . ($_SERVER['REQUEST_URI'] ?? '/');
 $canonical = strtok($canonical, '?');
 $pageTitle = (string) ($data['pageTitle'] ?? ($site['page_title'] ?? 'Portal'));
@@ -52,7 +53,7 @@ $ogImage = $data['ogImage'] ?? ($data['profile']['headshot_url'] ?? null);
     'description' => $description,
 ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) ?></script>
 </head>
-<body>
+<body<?= $adminUrl !== '' ? ' data-admin-url="' . e($adminUrl) . '"' : '' ?>>
 <a class="skip-link" href="#main">Skip to content</a>
 
 <div class="ambient" aria-hidden="true">

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\View;
 use App\Models\Admin;
 use App\Models\ActivityLog;
 use App\Models\ContactSubmission;
+use App\Models\ContentPost;
 use App\Models\MfaRecoveryCode;
 use App\Models\PageView;
 use App\Support\Auth;
@@ -253,7 +255,7 @@ final class AuthController
             'totalViews' => PageView::totalViews($days),
             'uniqueVisitors' => PageView::uniqueVisitors($days),
             'dailyCounts' => PageView::dailyCounts($days),
-            'topPaths' => PageView::topPaths($days),
+            'topPaths' => $this->topPathsWithArticleLinks(PageView::topPaths($days)),
             'topReferrers' => PageView::topReferrers($days),
             'deviceBreakdown' => PageView::deviceBreakdown($days),
             'unreadContacts' => ContactSubmission::unreadCount(),
@@ -262,6 +264,37 @@ final class AuthController
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
+
+    /**
+     * Top-pages rows for an /article/{id} path get the post's title as their
+     * label and a link out to the public page, in place of the bare path —
+     * admin pages can be on a different origin from the public site (e.g. a
+     * dedicated subdomain), so the link is built from app.url rather than a
+     * relative href. Any other path (/, /articles, a 404'd path, …) passes
+     * through unchanged with no link.
+     *
+     * @param list<array{path: string, views: int}> $paths
+     * @return list<array{path: string, views: int, label: string, href: ?string}>
+     */
+    private function topPathsWithArticleLinks(array $paths): array
+    {
+        $appUrl = rtrim((string) (Config::get('app')['url'] ?? ''), '/');
+
+        foreach ($paths as &$p) {
+            $p['label'] = $p['path'];
+            $p['href'] = null;
+
+            if (preg_match('#^/article/(\d+)$#', $p['path'], $m) === 1) {
+                $post = ContentPost::findAny((int) $m[1]);
+                if ($post !== null) {
+                    $p['label'] = $post['title'];
+                    $p['href'] = $appUrl . post_url($post);
+                }
+            }
+        }
+
+        return $paths;
+    }
 
     /**
      * A no-CLI shared-hosting upgrade is "replace the files, reload the

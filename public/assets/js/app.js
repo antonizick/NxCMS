@@ -18,10 +18,15 @@
         }
     });
 
-    /* Double-clicking the Toolbox tile title is a quiet shortcut to admin login. */
+    /* Double-clicking the Toolbox tile title is a quiet shortcut to admin login.
+       The route is always /admin/login — data-admin-url on <body> only ever
+       overrides the origin in front of it, for when the admin panel is
+       reverse-proxied on a separate host (e.g. a dedicated subdomain); absent
+       on a standard same-origin install, where it stays a relative link. */
     document.addEventListener('dblclick', function (e) {
         if (e.target.closest && e.target.closest('#t3')) {
-            window.location.href = '/admin/login';
+            var origin = document.body.dataset.adminUrl || '';
+            window.location.href = origin + '/admin/login';
         }
         /* Double-clicking the admin brand mark returns to the public portal
            without signing out — plain navigation, session cookie untouched. */
