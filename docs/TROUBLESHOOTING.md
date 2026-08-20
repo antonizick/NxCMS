@@ -112,6 +112,30 @@ This is a deliberate design tradeoff, not an oversight: a self-service
 security hole than the inconvenience it removes. Note it down somewhere
 before you need it.
 
+## A post I featured isn't showing on the home page
+
+Check these in order — the first three are far more common than a fault:
+
+1. **Is the tile already full?** Each rotation shows the newest five posts only.
+   The post list's filter bar says so directly when you are over the limit
+   (*"showing 5 of 7 — the 2 oldest never appear"*). Unflag something older to
+   make room.
+2. **Is the post suppressed?** A suppressed post is hidden everywhere, rotations
+   included. Un-suppress it and it comes straight back — you do not need to
+   re-flag it.
+3. **Is its publish date older than the five that are showing?** Rotations order
+   by publish date, not by when you ticked the box. A post you flagged most
+   recently can still be the one left out.
+4. **Is the date in the future?** It will appear, but marked *Scheduled*.
+
+If none of those apply, confirm the flag actually saved: filter the post list by
+*on profile* or *on map* and look for the post. If it is not listed, the checkbox
+did not save — the usual cause is JavaScript being blocked, since the checkboxes
+save on click rather than with a Save button. Open the post itself and use the
+**Home page** switches in the editor instead.
+
+See [`CAROUSELS.md`](CAROUSELS.md) for the full rules.
+
 ## Contact form rejects a real submission with a CAPTCHA error
 
 The proof-of-work CAPTCHA only activates once the site has received 5 or

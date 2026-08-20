@@ -19,9 +19,12 @@ JavaScript toolchain. If your web host can run WordPress, it can run this.
 
 - **Public portal** — nine configurable tiles: profile, projects, skills, posts, a
   location map, and a contact form
+- **Posts** — four categories: news, video, project work, and Misc for anything
+  that deserves an article without belonging to a tile. Markdown bodies, images,
+  and a searchable public archive.
 - **Rotating tiles** — feature any post in a carousel on the profile or map tile,
-  with pagination dots, click-to-jump, and pause on hover. Curate membership from
-  the post list without opening each post.
+  with pagination dots, click-to-jump, and pause on hover. Curate it from the post
+  list without opening each post: [`docs/CAROUSELS.md`](docs/CAROUSELS.md).
 - **Admin CMS** — write posts, manage projects and skills, upload images, edit every
   piece of copy and both colour themes without touching a file
 - **Security** — mandatory TOTP two-factor for admins, CSRF protection, a nonce-based
@@ -53,6 +56,8 @@ migrations apply themselves on your next admin login.
 
 ## More docs
 
+- [`docs/CAROUSELS.md`](docs/CAROUSELS.md) — featuring posts on the profile and map
+  tiles, and what decides which ones show
 - [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) — every `.env` setting and both
   supported docroot layouts
 - [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) — 500s, blank pages, rewrite
