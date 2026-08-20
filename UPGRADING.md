@@ -1,5 +1,11 @@
 # Upgrading
 
+## 0.2.0 → 0.2.1
+
+Documentation only — adds `docs/CAROUSELS.md` and a troubleshooting entry for
+featured posts that do not appear. No migration, no code change, nothing to do
+beyond replacing the files if you want the docs locally.
+
 ## 0.1.0 → 0.2.0
 
 Adds the Misc category and the profile/map tile carousels. One migration
