@@ -57,26 +57,41 @@ final class PageView
         return 'desktop';
     }
 
-    public static function totalViews(int $days): int
+    /**
+     * IPs to treat as admin traffic: anyone who has ever completed a
+     * successful admin login. Derived live from activity_log (no extra
+     * table to maintain) — updates itself as admins log in from new IPs.
+     * $outerCol lets callers that alias page_views (e.g. "pv") qualify the
+     * column being filtered without touching the subquery's own reference.
+     */
+    private static function adminIpClause(string $outerCol = 'ip_address'): string
     {
-        $stmt = self::since($days, 'SELECT COUNT(*) FROM page_views');
+        return "AND {$outerCol} NOT IN (
+            SELECT DISTINCT ip_address FROM activity_log
+             WHERE action = 'login_success' AND ip_address IS NOT NULL
+        )";
+    }
+
+    public static function totalViews(int $days, bool $excludeAdmin = false): int
+    {
+        $stmt = self::since($days, 'SELECT COUNT(*) FROM page_views', $excludeAdmin);
 
         return (int) $stmt->fetchColumn();
     }
 
-    public static function uniqueVisitors(int $days): int
+    public static function uniqueVisitors(int $days, bool $excludeAdmin = false): int
     {
-        $stmt = self::since($days, 'SELECT COUNT(DISTINCT ip_hash) FROM page_views');
+        $stmt = self::since($days, 'SELECT COUNT(DISTINCT ip_hash) FROM page_views', $excludeAdmin);
 
         return (int) $stmt->fetchColumn();
     }
 
     /** @return array<string, int> date (Y-m-d) => view count, always $days entries including zero days */
-    public static function dailyCounts(int $days): array
+    public static function dailyCounts(int $days, bool $excludeAdmin = false): array
     {
         $stmt = Database::connection()->prepare(
             'SELECT DATE(created_at) AS d, COUNT(*) AS c FROM page_views
-              WHERE created_at > (NOW() - INTERVAL :days DAY)
+              WHERE created_at > (NOW() - INTERVAL :days DAY) ' . ($excludeAdmin ? self::adminIpClause() : '') . '
               GROUP BY DATE(created_at)'
         );
         $stmt->bindValue(':days', $days, \PDO::PARAM_INT);
@@ -93,11 +108,11 @@ final class PageView
     }
 
     /** @return list<array{path: string, views: int}> */
-    public static function topPaths(int $days, int $limit = 8): array
+    public static function topPaths(int $days, int $limit = 8, bool $excludeAdmin = false): array
     {
         $stmt = Database::connection()->prepare(
             'SELECT path, COUNT(*) AS views FROM page_views
-              WHERE created_at > (NOW() - INTERVAL :days DAY)
+              WHERE created_at > (NOW() - INTERVAL :days DAY) ' . ($excludeAdmin ? self::adminIpClause() : '') . '
               GROUP BY path ORDER BY views DESC LIMIT :limit'
         );
         $stmt->bindValue(':days', $days, \PDO::PARAM_INT);
@@ -108,13 +123,14 @@ final class PageView
     }
 
     /** @return list<array{referrer: string, views: int}> excludes blank/self referrers */
-    public static function topReferrers(int $days, int $limit = 8): array
+    public static function topReferrers(int $days, int $limit = 8, bool $excludeAdmin = false): array
     {
         $stmt = Database::connection()->prepare(
             "SELECT referrer, COUNT(*) AS views FROM page_views
               WHERE created_at > (NOW() - INTERVAL :days DAY)
                 AND referrer IS NOT NULL AND referrer != ''
                 AND referrer NOT LIKE :self
+                " . ($excludeAdmin ? self::adminIpClause() : '') . "
               GROUP BY referrer ORDER BY views DESC LIMIT :limit"
         );
         $stmt->bindValue(':days', $days, \PDO::PARAM_INT);
@@ -130,11 +146,11 @@ final class PageView
     }
 
     /** @return array<string, int> device_type => count, always includes all four keys */
-    public static function deviceBreakdown(int $days): array
+    public static function deviceBreakdown(int $days, bool $excludeAdmin = false): array
     {
         $stmt = Database::connection()->prepare(
             'SELECT device_type, COUNT(*) AS c FROM page_views
-              WHERE created_at > (NOW() - INTERVAL :days DAY)
+              WHERE created_at > (NOW() - INTERVAL :days DAY) ' . ($excludeAdmin ? self::adminIpClause() : '') . '
               GROUP BY device_type'
         );
         $stmt->bindValue(':days', $days, \PDO::PARAM_INT);
@@ -149,9 +165,10 @@ final class PageView
         ];
     }
 
-    private static function since(int $days, string $sql): \PDOStatement
+    private static function since(int $days, string $sql, bool $excludeAdmin = false): \PDOStatement
     {
-        $stmt = Database::connection()->prepare($sql . ' WHERE created_at > (NOW() - INTERVAL :days DAY)');
+        $sql .= ' WHERE created_at > (NOW() - INTERVAL :days DAY) ' . ($excludeAdmin ? self::adminIpClause() : '');
+        $stmt = Database::connection()->prepare($sql);
         $stmt->bindValue(':days', $days, \PDO::PARAM_INT);
         $stmt->execute();
 
@@ -174,10 +191,10 @@ final class PageView
      *
      * @return list<array<string, mixed>>
      */
-    public static function searchAdmin(string $device, string $q, string $sort, int $limit, int $offset): array
+    public static function searchAdmin(string $device, string $q, string $sort, int $limit, int $offset, bool $excludeAdmin = false): array
     {
         $order = self::SORTS[$sort] ?? self::SORTS['newest'];
-        [$where, $params] = self::searchWhereAdmin($device, $q);
+        [$where, $params] = self::searchWhereAdmin($device, $q, $excludeAdmin);
 
         $stmt = Database::connection()->prepare(
             "SELECT pv.*, cp.title AS article_title, cp.category AS article_category
@@ -197,9 +214,9 @@ final class PageView
         return $stmt->fetchAll();
     }
 
-    public static function searchAdminCount(string $device, string $q): int
+    public static function searchAdminCount(string $device, string $q, bool $excludeAdmin = false): int
     {
-        [$where, $params] = self::searchWhereAdmin($device, $q);
+        [$where, $params] = self::searchWhereAdmin($device, $q, $excludeAdmin);
 
         $stmt = Database::connection()->prepare("SELECT COUNT(*) FROM page_views pv WHERE {$where}");
         foreach ($params as $key => $value) {
@@ -211,7 +228,7 @@ final class PageView
     }
 
     /** @return array{0: string, 1: array<string, string>} */
-    private static function searchWhereAdmin(string $device, string $q): array
+    private static function searchWhereAdmin(string $device, string $q, bool $excludeAdmin = false): array
     {
         $where = '1 = 1';
         $params = [];
@@ -226,6 +243,10 @@ final class PageView
             $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
             $params[':like_ip'] = $like;
             $params[':like_path'] = $like;
+        }
+
+        if ($excludeAdmin) {
+            $where .= ' ' . self::adminIpClause('pv.ip_address');
         }
 
         return [$where, $params];
@@ -250,10 +271,10 @@ final class PageView
      *
      * @return list<array<string, mixed>>
      */
-    public static function searchAdminUnique(string $device, string $q, string $sort, int $limit, int $offset): array
+    public static function searchAdminUnique(string $device, string $q, string $sort, int $limit, int $offset, bool $excludeAdmin = false): array
     {
         $order = self::UNIQUE_SORTS[$sort] ?? self::UNIQUE_SORTS['most'];
-        [$where, $params] = self::searchWhereAdmin($device, $q);
+        [$where, $params] = self::searchWhereAdmin($device, $q, $excludeAdmin);
 
         $stmt = Database::connection()->prepare(
             "SELECT pv.ip_address AS ip_address,
@@ -278,9 +299,9 @@ final class PageView
         return $stmt->fetchAll();
     }
 
-    public static function searchAdminUniqueCount(string $device, string $q): int
+    public static function searchAdminUniqueCount(string $device, string $q, bool $excludeAdmin = false): int
     {
-        [$where, $params] = self::searchWhereAdmin($device, $q);
+        [$where, $params] = self::searchWhereAdmin($device, $q, $excludeAdmin);
 
         $stmt = Database::connection()->prepare(
             "SELECT COUNT(*) FROM (

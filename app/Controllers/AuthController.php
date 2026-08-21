@@ -294,6 +294,9 @@ final class AuthController
 
         $db = Database::connection();
         $days = 30;
+        $hideAdmin = ($_GET['hide_admin_set'] ?? '') === '1'
+            ? ($_GET['hide_admin'] ?? '') === '1'
+            : true;
 
         View::render('admin/dashboard', [
             'pageTitle' => 'Dashboard — Admin',
@@ -305,12 +308,13 @@ final class AuthController
                 'admins' => (int) $db->query('SELECT COUNT(*) FROM admins')->fetchColumn(),
             ],
             'analyticsDays' => $days,
-            'totalViews' => PageView::totalViews($days),
-            'uniqueVisitors' => PageView::uniqueVisitors($days),
-            'dailyCounts' => PageView::dailyCounts($days),
-            'topPaths' => $this->topPathsWithArticleLinks(PageView::topPaths($days)),
-            'topReferrers' => PageView::topReferrers($days),
-            'deviceBreakdown' => PageView::deviceBreakdown($days),
+            'hideAdmin' => $hideAdmin,
+            'totalViews' => PageView::totalViews($days, $hideAdmin),
+            'uniqueVisitors' => PageView::uniqueVisitors($days, $hideAdmin),
+            'dailyCounts' => PageView::dailyCounts($days, $hideAdmin),
+            'topPaths' => $this->topPathsWithArticleLinks(PageView::topPaths($days, 8, $hideAdmin)),
+            'topReferrers' => PageView::topReferrers($days, 8, $hideAdmin),
+            'deviceBreakdown' => PageView::deviceBreakdown($days, $hideAdmin),
             'unreadContacts' => ContactSubmission::unreadCount(),
             'recentActivity' => ActivityLog::searchAdmin('all', 'all', '', 'newest', 8, 0),
         ], 'layouts/admin');

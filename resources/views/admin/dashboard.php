@@ -15,9 +15,17 @@ $topReferrers = $data['topReferrers'];
 $device = $data['deviceBreakdown'];
 $deviceTotal = max(1, array_sum($device));
 $recentActivity = $data['recentActivity'];
+$hideAdmin = (bool) $data['hideAdmin'];
 ?>
 <div class="tile page page--wide">
-    <h1 class="page-title">Welcome, <?= e($admin['username']) ?></h1>
+    <div class="archive-head">
+        <h1 class="page-title">Welcome, <?= e($admin['username']) ?></h1>
+        <form method="get" action="/admin" class="checkbox" title="Excludes traffic from IPs that have completed an admin login">
+            <input type="hidden" name="hide_admin_set" value="1">
+            <input type="checkbox" name="hide_admin" value="1" id="hide_admin" class="js-auto-submit" <?= $hideAdmin ? 'checked' : '' ?>>
+            <label for="hide_admin">Omit admin traffic</label>
+        </form>
+    </div>
     <p class="page-sub">
         MFA: <?= $admin['mfa_enabled'] ? 'enabled' : 'not enabled' ?>
         &middot; Last login: <?= $admin['last_login_at'] ? e(fmt_date($admin['last_login_at'], 'j M Y, g:i a')) : 'this is your first login' ?>
@@ -46,7 +54,7 @@ $recentActivity = $data['recentActivity'];
         </a>
     </div>
 
-    <h2 class="section-title">Engagement &mdash; last <?= $days ?> days</h2>
+    <h2 class="section-title">Engagement &mdash; last <?= $days ?> days<?= $hideAdmin ? ' (admin traffic omitted)' : '' ?></h2>
     <div class="dash-grid dash-grid--stats">
         <div class="dash-card dash-card--static">
             <span class="dash-card-count"><?= (int) $data['totalViews'] ?></span>

@@ -27,12 +27,15 @@ final class AdminVisitorsController extends AdminController
         }
 
         $q = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 120);
+        $hideAdmin = ($_GET['hide_admin_set'] ?? '') === '1'
+            ? ($_GET['hide_admin'] ?? '') === '1'
+            : true;
 
-        $total = PageView::searchAdminCount($device, $q);
+        $total = PageView::searchAdminCount($device, $q, $hideAdmin);
         $lastPage = max(1, (int) ceil($total / self::PER_PAGE));
         $page = max(1, min($lastPage, (int) ($_GET['page'] ?? 1)));
 
-        $rows = PageView::searchAdmin($device, $q, $sort, self::PER_PAGE, ($page - 1) * self::PER_PAGE);
+        $rows = PageView::searchAdmin($device, $q, $sort, self::PER_PAGE, ($page - 1) * self::PER_PAGE, $hideAdmin);
 
         View::render('admin/visitors/index', [
             'pageTitle' => 'Visitors — Admin',
@@ -44,6 +47,7 @@ final class AdminVisitorsController extends AdminController
             'page' => $page,
             'lastPage' => $lastPage,
             'total' => $total,
+            'hideAdmin' => $hideAdmin,
         ], 'layouts/admin');
     }
 
@@ -62,12 +66,15 @@ final class AdminVisitorsController extends AdminController
         }
 
         $q = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 120);
+        $hideAdmin = ($_GET['hide_admin_set'] ?? '') === '1'
+            ? ($_GET['hide_admin'] ?? '') === '1'
+            : true;
 
-        $total = PageView::searchAdminUniqueCount($device, $q);
+        $total = PageView::searchAdminUniqueCount($device, $q, $hideAdmin);
         $lastPage = max(1, (int) ceil($total / self::PER_PAGE));
         $page = max(1, min($lastPage, (int) ($_GET['page'] ?? 1)));
 
-        $rows = PageView::searchAdminUnique($device, $q, $sort, self::PER_PAGE, ($page - 1) * self::PER_PAGE);
+        $rows = PageView::searchAdminUnique($device, $q, $sort, self::PER_PAGE, ($page - 1) * self::PER_PAGE, $hideAdmin);
 
         View::render('admin/visitors/unique', [
             'pageTitle' => 'Unique visitors — Admin',
@@ -79,6 +86,7 @@ final class AdminVisitorsController extends AdminController
             'page' => $page,
             'lastPage' => $lastPage,
             'total' => $total,
+            'hideAdmin' => $hideAdmin,
         ], 'layouts/admin');
     }
 }

@@ -52,7 +52,7 @@ $currentPath = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_
 <div class="shell shell--admin<?= $wideShell ? ' shell--wide' : '' ?>">
     <header class="site-head">
         <span class="brand">
-            <span class="brand-mark" id="adminBrandMark" aria-hidden="true">NA</span>
+            <span class="brand-mark" id="adminBrandMark" aria-hidden="true"><?= e($site['initials'] ?? 'NA') ?></span>
             <span class="brand-name">Admin</span>
         </span>
 

@@ -15,9 +15,10 @@ $q = $data['q'];
 $page = $data['page'];
 $lastPage = $data['lastPage'];
 $total = $data['total'];
+$hideAdmin = (bool) $data['hideAdmin'];
 
-$qs = static function (array $over) use ($device, $sort, $q, $page): string {
-    $params = array_merge(['device' => $device, 'sort' => $sort, 'q' => $q, 'page' => $page], $over);
+$qs = static function (array $over) use ($device, $sort, $q, $page, $hideAdmin): string {
+    $params = array_merge(['device' => $device, 'sort' => $sort, 'q' => $q, 'page' => $page, 'hide_admin' => $hideAdmin ? '1' : '0', 'hide_admin_set' => '1'], $over);
     $params = array_filter($params, static fn($v) => $v !== '' && $v !== null && $v !== 1 && $v !== 'all');
     return '/admin/visitors/unique' . ($params ? '?' . http_build_query($params) : '');
 };
@@ -25,15 +26,27 @@ $qs = static function (array $over) use ($device, $sort, $q, $page): string {
 <div class="tile page page--wide">
     <div class="archive-head">
         <h1 class="page-title">Visitors</h1>
+        <form method="get" action="/admin/visitors/unique" class="checkbox" title="Excludes traffic from IPs that have completed an admin login">
+            <?php foreach (['device' => $device, 'sort' => $sort, 'q' => $q] as $k => $v): ?>
+                <?php if ($v !== '' && $v !== 'all'): ?>
+                    <input type="hidden" name="<?= e($k) ?>" value="<?= e($v) ?>">
+                <?php endif; ?>
+            <?php endforeach; ?>
+            <input type="hidden" name="hide_admin_set" value="1">
+            <input type="checkbox" name="hide_admin" value="1" id="hide_admin" class="js-auto-submit" <?= $hideAdmin ? 'checked' : '' ?>>
+            <label for="hide_admin">Omit admin traffic</label>
+        </form>
     </div>
     <p class="page-sub"><?= (int) $total ?> unique visitor<?= $total === 1 ? '' : 's' ?></p>
 
     <nav class="subtabs" aria-label="Visitor views">
-        <a class="subtab-link" href="/admin/visitors">Visits</a>
+        <a class="subtab-link" href="/admin/visitors?<?= e(http_build_query(['hide_admin' => $hideAdmin ? '1' : '0', 'hide_admin_set' => '1'])) ?>">Visits</a>
         <a class="subtab-link is-active" href="/admin/visitors/unique" aria-current="page">Unique visitors</a>
     </nav>
 
     <form class="archive-controls" method="get" action="/admin/visitors/unique">
+        <input type="hidden" name="hide_admin" value="<?= $hideAdmin ? '1' : '0' ?>">
+        <input type="hidden" name="hide_admin_set" value="1">
         <div class="search-field">
             <?= icon('search', 'icon') ?>
             <input type="search" name="q" value="<?= e($q) ?>" placeholder="Search IP or page&hellip;" maxlength="120">
