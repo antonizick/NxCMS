@@ -54,12 +54,21 @@ scan() {  # scan <FAIL|WARN> <label> <regex> [allow-regex]
     echo
 }
 
+# The origin install's real shell user / server / DB name / hostname / SSH key
+# name are NOT hardcoded here — that would ship them in this public repo. They
+# live in a local, gitignored tools/leakcheck.local.env (see
+# tools/leakcheck.local.env.example), sourced below if present. Without it,
+# the origin-identity checks are silently skipped (harmless for a clone that
+# never had that identity to leak in the first place).
+LOCAL_ENV="$(dirname "${BASH_SOURCE[0]}")/leakcheck.local.env"
+[ -f "$LOCAL_ENV" ] && . "$LOCAL_ENV"
+
 echo "== leakcheck: must never ship =="
-scan FAIL "origin shell user / home path" '/home/REDACTED-USER|REDACTED-USER@'
-scan FAIL "origin hosting server"         'REDACTED-SERVER'
-scan FAIL "origin database name"          'REDACTED-DB'
-scan FAIL "origin live hostname"          'REDACTED-HOSTNAME'
-scan FAIL "origin SSH key name"           'REDACTED-SSHKEY|\.ssh/'
+[ -n "${LEAKCHECK_ORIGIN_USER:-}" ]     && scan FAIL "origin shell user / home path" "/home/${LEAKCHECK_ORIGIN_USER}|${LEAKCHECK_ORIGIN_USER}@"
+[ -n "${LEAKCHECK_ORIGIN_SERVER:-}" ]   && scan FAIL "origin hosting server"         "$LEAKCHECK_ORIGIN_SERVER"
+[ -n "${LEAKCHECK_ORIGIN_DB:-}" ]       && scan FAIL "origin database name"          "$LEAKCHECK_ORIGIN_DB"
+[ -n "${LEAKCHECK_ORIGIN_HOSTNAME:-}" ] && scan FAIL "origin live hostname"          "${LEAKCHECK_ORIGIN_HOSTNAME//./\\.}"
+[ -n "${LEAKCHECK_ORIGIN_SSH_KEY:-}" ]  && scan FAIL "origin SSH key name"           "${LEAKCHECK_ORIGIN_SSH_KEY}|\\.ssh/"
 scan FAIL "private key material"          'BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY'
 
 # Not a content match — a real .env must never become a publishable file.

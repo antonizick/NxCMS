@@ -21,6 +21,9 @@
 /.lucentrc
 /planning.md
 
+# Real origin-identity values for leakcheck.sh — never published
+/tools/leakcheck.local.env
+
 *.log
 .DS_Store
 Thumbs.db
