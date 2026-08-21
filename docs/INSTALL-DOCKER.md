@@ -15,7 +15,8 @@ source checkout to use them.
 
 - **Docker** and **Docker Compose** (the `docker compose` subcommand, not the
   older standalone `docker-compose` binary). If `docker compose version`
-  prints something, you're set.
+  prints something, skip straight to Step 2 — you're already set. Otherwise
+  Step 1 below walks through installing it.
 - **git**, or just a downloaded/extracted copy of the repository — either
   works, but `git pull` is the easiest way to take future updates (see
   [`UPGRADING.md`](../UPGRADING.md)).
@@ -26,14 +27,74 @@ source checkout to use them.
 
 ## Steps
 
-**1. Get the source.**
+**1. Install Docker.**
+
+These commands are for **Debian or Ubuntu** (including WSL running an Ubuntu
+image — the most common default). If `docker compose version` already prints
+a version, skip to Step 2. If you're on a different Linux distribution (e.g.
+Fedora, Arch, openSUSE), follow the equivalent guide at
+[docs.docker.com/engine/install](https://docs.docker.com/engine/install/) —
+the rest of this document doesn't change either way.
+
+Remove any old/conflicting packages first (safe to run even if none of these
+are installed):
+
+```bash
+for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
+  sudo apt-get remove -y $pkg
+done
+```
+
+Add Docker's official APT repository:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+```
+
+Install Docker Engine and the Compose plugin (this is what gives you the
+`docker compose` subcommand):
+
+```bash
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+Let your user run `docker` without `sudo` (log out and back in, or run
+`newgrp docker`, for this to take effect in your current shell):
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+Verify:
+
+```bash
+docker compose version
+```
+
+You should see something like `Docker Compose version v2.x.x`. If you get
+`permission denied` on `docker` commands, the group membership from above
+hasn't taken effect yet — fully log out and back in (or reboot WSL with
+`wsl --shutdown` from Windows, then reopen your terminal).
+
+**2. Get the source.**
 
 ```bash
 git clone https://github.com/antonizick/NxCMS.git
 cd NxCMS
 ```
 
-**2. Start it.**
+**3. Start it.**
 
 ```bash
 make up
@@ -53,7 +114,7 @@ This does several things the first time:
 Expect a minute or two the first time (image build + `composer install`);
 seconds on every run after that.
 
-**3. Open the installer.**
+**4. Open the installer.**
 
 The command output ends with a URL — normally
 **http://127.0.0.1:8117/install.php**. If you missed the token in the
@@ -63,7 +124,7 @@ scroll-back, re-print it with:
 make token
 ```
 
-**4. Run through the installer.**
+**5. Run through the installer.**
 
 This is identical to the shared-hosting installer — same steps, same
 screens, same validation rules — with one difference on the **Database**
@@ -77,7 +138,7 @@ enrollment, recovery codes — works exactly as described in
 [`INSTALL-SHARED-HOSTING.md`](INSTALL-SHARED-HOSTING.md) steps 5 onward,
 if you want the fuller walkthrough with screenshots.
 
-**5. You're in.** http://127.0.0.1:8117/admin
+**6. You're in.** http://127.0.0.1:8117/admin
 
 ## Command reference
 
